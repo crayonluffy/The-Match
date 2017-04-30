@@ -23,7 +23,7 @@ function startGame() {
 	$infoContainer = document.getElementById("infoContainer");
     //canvasW = 384;
     //canvasH = 288;
-    canvasW = 420;
+    canvasW = 480;
     canvasH = 320;
     timerMax = 30;
 	timer = 0;
@@ -89,7 +89,7 @@ function startGame() {
                     walkable: defineTile.walkable(row, col),
                     water: defineTile.water(row, col),
 					// center point of each grid
-					x: tileClone.x + (tileSheet._frameHeight / 2),
+					x: tileClone.x + (tileSheet._frameWidth / 2),
 					y: tileClone.y + (tileSheet._frameHeight / 2)
                 };
                 tileIndex++;
@@ -98,11 +98,11 @@ function startGame() {
         } 
     }
     
-	//default function --- add enemy, And I add some propoty like isfire and fireTimer
+	//default function --- add enemy, And I add some propoty like isfire and lifeTimer
     function addPlayer(rot) {
         player.name = "player";
-        player.x = canvasW / 2;
-        player.y = canvasH / 2;
+        player.x = Math.floor(canvasW / 50 / 2) * 50 + 25;
+        player.y = Math.floor(canvasH / 50 / 2) * 50 + 25;
         player.regX = 0;
         player.regY = 0;
         player.rotation = rot;
@@ -110,14 +110,15 @@ function startGame() {
         player.height = 34;
         player.width = 34;
         player.gotoAndStop("stand");
-		player.fireTimer = 0;
+		player.lifeTimer = 0;
 		player.isfire = false;
 		player.fireNum = -1;
-		player.attack = false;
+		player.timeToBurn = 60;
+		//player.attack = false;
         board.addChild(player);
     }
     
-	//default function --- add enemy, And I add some propoty like isfire and attackTimer
+	//default function --- add enemy, And I add some propoty like isfire
     function addEnemy(x, y, rot) {
         var num = enemies.length;
         enemies[num] = enemy.clone();
@@ -132,8 +133,8 @@ function startGame() {
         enemies[num].width = 34;
         enemies[num].gotoAndPlay("stand");
 		enemies[num].isfire = false;
-		enemies[num].fireTimer = 0;
-		enemies[num].attackTimer = 0;
+		enemies[num].lifeTimer = 0;
+		enemies[num].timeToBurn = 30;
 		enemies[num].fireNum = -1;
 		enemies[num].dead = false;		
         board.addChild(enemies[num]);
@@ -168,7 +169,7 @@ function startGame() {
         woods[num].gotoAndStop("idle");
 		woods[num].isfire = false;
 		woods[num].fireNum = -1;	
-		woods[num].fireTimer = 0;
+		woods[num].lifeTimer = 0;
 		woods[num].destory = false;
         board.addChild(woods[num]);
 		//return num;
@@ -295,28 +296,35 @@ function startGame() {
 					moveChar(enemies[e],WalkToX(enemyPoint,playerPoint).x,0);
 					moveChar(enemies[e],0,WalkToY(enemyPoint,playerPoint).y);
 					enemies[e].gotoAndStop("stand");
-					enemies[e].attackTimer = 0;
 				}
 				
-				else if (distToPlayer < player.width) {
+				else if (distToPlayer <= player.width) {
 					Fire();
 					// if player and enemy have collission, enemy will wait 1 second to fire
 					if (!checkWater(player))
 					{
-						enemies[e].attackTimer++;
+						if (player.timeToBurn>0)
+							player.timeToBurn--;
 					}
-					// if player is fired, and he will pass the fire to the enemy
-					if (player.isfire)
+					// if player is fired, and he will pass the fire to the enemy			
+					if (!enemies[e].isfire)
 					{
-						if (!enemies[e].isfire)
+						//if (enemies[e].timeToBurn>0)
+						//	enemies[e].timeToBurn--;
+						if (player.isfire)
 						{
-							enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
-							enemies[e].isfire = true;
+							if (enemies[e].timeToBurn>0)
+								enemies[e].timeToBurn -=30;
+							if (enemies[e].timeToBurn == 0)
+							{
+								enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
+								enemies[e].isfire = true;
+							}
 						}
 					}
 					
-					// if player and enemy have collission, enemy will wait 1 second to fire 
-					if (waitForfire(e))
+					// if player and enemy have collission, enemy will wait 2 second to fire 
+					if (waitForfire())
 					{
 						// set the fireNum so that we know which fire is attached to the player
 						if (!player.isfire)
@@ -331,6 +339,13 @@ function startGame() {
         }   
     }
     
+	// if player and enemy have collission, enemy will wait num second to fire 
+	function waitForfire(){
+			if (player.timeToBurn == 0){
+			return true;
+		}
+		return false;
+	}
 	//since the default moveChar can only move in one direction at one time, i write the following function to move the enemy
 	//for enemy walk to x
 	function WalkToX(point1,point2){
@@ -393,8 +408,13 @@ function startGame() {
 					{
 						if (!enemies[e].isfire)
 						{
-							enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
-							enemies[e].isfire = true;
+							if (enemies[e].timeToBurn>0)
+								enemies[e].timeToBurn -=30;
+							if (enemies[e].timeToBurn == 0)
+							{
+								enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
+								enemies[e].isfire = true;
+							}
 						}
 					}
 				}
@@ -533,22 +553,26 @@ function startGame() {
 		if (player.isfire)
 		{
 			if (checkWater(player))
+			{
 				isfire = false;
+			}
 			else
+			{
 				isfire = true;
-			fires[player.fireNum].x = player.x;
-			fires[player.fireNum].y = player.y;
-			player.fireTimer++;
+				fires[player.fireNum].x = player.x;
+				fires[player.fireNum].y = player.y;
+				player.lifeTimer++;
+			}
 			// timerMax = 30 frames = 1s
-			if (player.fireTimer>(timerMax*4-20))
+			if (player.lifeTimer>(timerMax*4-20))
 			{
 				alert("You are dead!");
-				player.fireTimer = 0;
+				player.lifeTimer = 0;
 				location.reload();
 			}
 		}
 		// else
-			// player.fireTimer = 0;
+			// player.lifeTimer = 0;
 		
 		//check fire on enemy
 		for (var e = 0; e < enemies.length; e++) {
@@ -557,13 +581,17 @@ function startGame() {
 				if (enemies[e].isfire)
 				{
 					if (checkWater(enemies[e]))
+					{
 						isfire = false;
+					}
 					else
+					{
 						isfire = true;
-					fires[enemies[e].fireNum].x = enemies[e].x;
-					fires[enemies[e].fireNum].y = enemies[e].y;
-					enemies[e].fireTimer++;
-					if (enemies[e].fireTimer>timerMax*2)
+						fires[enemies[e].fireNum].x = enemies[e].x;
+						fires[enemies[e].fireNum].y = enemies[e].y;
+						enemies[e].lifeTimer++;
+					}
+					if (enemies[e].lifeTimer>timerMax*2)
 					{
 						board.removeChild(fires[enemies[e].fireNum]);
 						board.removeChild(enemies[e]);
@@ -589,8 +617,8 @@ function startGame() {
 			if (!woods[w].destory){
 				if (woods[w].isfire){
 					isfire = true;
-					woods[w].fireTimer++;
-					if (woods[w].fireTimer>timerMax*3)
+					woods[w].lifeTimer++;
+					if (woods[w].lifeTimer>timerMax*3)
 					{
 						board.removeChild(fires[woods[w].fireNum]);
 						board.removeChild(woods[w]);
@@ -610,10 +638,21 @@ function startGame() {
 					var waterPoint = {x: mapTiles["t_" + row + "_" + col].x, y: mapTiles["t_" + row + "_" + col].y};
 					var CharPoint = {x: Character.x, y: Character.y};
 					var distToChar = pTheorem(waterPoint, CharPoint);
-					if (distToChar < Character.width )
+					if (distToChar <= Character.width )
 					{
 						// if (Character.isfire)
 						// {
+							if (Character === player)	
+							{
+								if (Character.timeToBurn<60)
+								{
+									Character.timeToBurn++;
+									console.log("player recover");
+								}
+							}
+							else
+								if (Character.timeToBurn<30)
+									Character.timeToBurn++;
 							Character.isfire = false;
 							board.removeChild(fires[Character.fireNum]);
 							console.log("clear");
@@ -631,7 +670,6 @@ function startGame() {
     function handleTick() {
         detectKeys();
         enemyBrain();
-        stage.update();
 		CheckWoodFire();
 		//check fire and if is fire, play sound effect
 		if(checkFire()){
@@ -641,23 +679,18 @@ function startGame() {
 			}
 			console.log("Check Fire");
 		}
-		if (100-player.fireTimer>=0)
-			health.text = "Player Health: "+(100-player.fireTimer);
+		if (100-player.lifeTimer>=0)
+			health.text = "Player Health:\t"+(100-player.lifeTimer) +"\t\tTime left to burn: "+player.timeToBurn;
+		for (var i = 0;i<enemies.length;i++){
+			if (60-enemies[i].lifeTimer>=0)
+			enemiesHealth[i].text = "Enemy "+ (i+1) + " Health:\t"+(60-enemies[i].lifeTimer)+"\t\tTime left to burn: "+enemies[i].timeToBurn;
+		}
+		checkWater(player);
 		for (var i = 0;i<enemies.length;i++)
-		{
-			if (60-enemies[i].fireTimer>=0)
-			enemiesHealth[i].text = "Enemy "+ (i+1) + " Health: "+(60-enemies[i].fireTimer);
-		}
-    }
-	
-	// if player and enemy have collission, enemy will wait 1 second to fire 
-	function waitForfire(num){
-		//console.log("Timer: "+timer);
-		if (enemies[num].attackTimer > timerMax){
-			return true;
-		}
-		return false;
+			checkWater(enemies[i]);
+		stage.update();
 	}
+	//console.log("Timer: "+timer);
     
 	//Info Canvas
 	function InfoBar(){
@@ -715,7 +748,7 @@ function startGame() {
                 stand: [0],
                 fire: [1, 3]
             },
-            images: ["images/fm_fire.png"],
+            images: ["images/fm_fire_both.png"],
             frames: {
                 height: 50,
                 width: 50,
@@ -732,7 +765,7 @@ function startGame() {
                 stand: [0],
                 fire: [1, 3]
             },
-            images: ["images/fm_fire.png"],
+            images: ["images/fm_fire_right.png"],
             frames: {
                 height: 50,
                 width: 50,

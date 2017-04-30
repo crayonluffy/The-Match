@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+	A client-side application which makes use of Backbone.js and Backbone.iobind for synchronizing with a back-end server running on Node.js
+	This makes use of EaselJS for drawing graphics elements
+!-->
+
+<head>
+	<script src="/bower_components/underscore/underscore.js"> </script>
+	<script src="/bower_components/backbone/backbone.js"> </script>
+	<script src="/bower_components/jquery/dist/jquery.min.js"> </script>
+	<script src="/bower_components/backbone.iobind/dist/backbone.iobind.min.js"> </script>
+	<script src="/bower_components/backbone.iobind/dist/backbone.iosync.min.js"> </script>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="/bower_components/EaselJS/lib/easeljs-0.8.2.min.js"></script>
+</head>
+
+<body>
+	<div>
+		<p> radius= <input type="text" id="circle_radius" value="50"> </input> </p>
+		<p> vx=<input type="text" id="circle_vx" value="10"> </input> </p>
+		<p> vy=<input type="text" id="circle_vy" value="10"> </input> </p>
+		<p> color= <input type="color" id="circle_color" value="#ff0000"> </input> </p>
+		<br>
+		<button id="server_error"> Enable Server Error </button>
+	</div>
+
+	<canvas id="CirclesCanvas" >
+		alternate content
+	</canvas>
+	
+	<script>
+		var app={ models:{}, collections:{}, views: {}	};
+		var server_error_status=false;
+		var one_circle, view;
+		
+		//	this is for sprite sheet, coming from http://learning.sd.polyu.edu.hk/x/sgPfAQ
+		var fromTexturePacker = {
+			framerate: 8,       // Add the speed of the spritesheet
+			"images": ["/images/ContraA.png"],    
+			"frames": [
+				[2, 2, 50, 48],
+				[54, 2, 50, 48],
+				[106, 2, 50, 48],
+				[158, 2, 50, 48],
+				[210, 2, 50, 48],
+				[262, 2, 50, 48],
+				[314, 2, 50, 48],
+				[366, 2, 50, 48],
+				[418, 2, 50, 48],
+				[470, 2, 50, 48],
+				[522, 2, 50, 48],
+				[574, 2, 50, 48],
+				[626, 2, 50, 48],
+				[678, 2, 50, 48],
+				[730, 2, 50, 48],
+				[626, 2, 50, 48],
+				[782, 2, 50, 48],
+				[834, 2, 50, 48],
+				[886, 2, 50, 48],
+				[938, 2, 50, 48],
+				[990, 2, 50, 48],
+				[1042, 2, 50, 48],
+				[1094, 2, 50, 48],
+				[1146, 2, 50, 48],
+				[1198, 2, 50, 48],
+				[1250, 2, 50, 48],
+				[1302, 2, 50, 48]
+			],
+			"animations": {
+					// the original animation can be deleted because they are not used anymore,
+					// further more, if you can organize animations in folders, it can use smart folder to generate correct animation data
+					// Add more animation state (the first and last frame of the animation)
+					"shootSide":[0,1],
+					"shootUp":[2,3],
+					"shootrunup":[4,6],
+					"shootrundown":[7,9],
+					"run":[10,15],
+					"onstomach":16,       // Note that single frame does not go into array
+					"jump":[17,20],
+					"die":[21,26],
+					"fullrun":[0,26]  // Added for a full run animation to show from the first frame to the last frame
+			},
+			"texturepacker": [
+					"SmartUpdateHash: $TexturePacker:SmartUpdate:45b6e15e0ae86aae9a001c364782e236:cf08f0478e9691f91c2217c30f56a70e:8bc6413d34f5b5fa1d1f668e2667f290$",
+					"Created with TexturePacker (http://www.texturepacker.com) for EaselJS"
+			]
+		};
+
+		//	a class for synchronizing server time and generate a higher speed clock for local use
+		function LocalTimer(deltaTimeMSec, maxLocalSubTick)
+		{	//
+			//	deltaTimeMSec - time betwen ticks
+			//	maxLocalSubTick - maximum no subticks in a tick, >=1
+			//
+			//	maximum number of events per tick is determined by maxLocalSubTick; when performance of system is low, the number of events per tick will be reduced
+		
+			this.localSubTick = 0;
+			this.maxLocalSubTick = maxLocalSubTick;
+			
+			this.normDeltaTimeMSec = deltaTimeMSec;
+				//	nominal value of timeout to next tick
+				
+			this.maxDeltaTimeFactor=1.95;
+			this.maxDeltaTimeMSec =  this.normDeltaTimeMSec*this.maxDeltaTimeFactor;
+				//	maximum allowable timeout to next tick
+				
+			this.minDeltaTimeFactor=0.05;
+			this.minDeltaTimeMSec =  this.normDeltaTimeMSec*this.minDeltaTimeFactor;
+				//	minimum allowable timeout to next tick
+			
+			this.deltaTimeMSecAdjusted=this.normDeltaTimeMSec;
+				//	timeout to next tick after adjustment
+				
+			this.adjustFactor=0.5;	//	this affects the amount of time in adjustment - must be from 0 to 1, and larger means faster adjustment
+				
+			_.extend(this, Backbone.Events);
+			
+			this.lastHandlerTime=-1;
+			this.currEvent = { currTick:0, lastTick:0};	//	the last or current tick Event object from LocalTimer
+			
+			this.timerHandler = function(timer)
+			{	var currTick=timer.nextTick-1+timer.localSubTick/timer.maxLocalSubTick;
+			
+				var currTime=performance.now();
+				//	given currTime, calculate the value of nextTick and localSubTick 
+
+				while (currTime > timer.nextTime)
+				{	timer.lastTime = timer.nextTime;
+					timer.nextTime = timer.nextTime + timer.deltaTimeMSecAdjusted;
+					timer.timeMSecPerSubTick = timer.deltaTimeMSecAdjusted/timer.maxLocalSubTick;
+					timer.deltaTimeMSecAdjusted=timer.normDeltaTimeMSec;
+					timer.nextTick++;
+				}
+				//	round to the next larger localSubTick
+				var minElapsedTimeInTick=currTime - timer.lastTime + 4;		//	setTimeout sleeps for at least 4 ms
+				timer.localSubTick = Math.trunc(minElapsedTimeInTick / timer.timeMSecPerSubTick)+1;
+				var waitTime = timer.localSubTick * timer.timeMSecPerSubTick + timer.lastTime - currTime;
+				
+				//console.log("tick="+timer.nextTick+" subtick="+timer.localSubTick+" waitTime="+waitTime);
+				
+				setTimeout(	timer.timerHandler, waitTime, timer);
+				
+				var event={};
+				event.target=timer;
+				event.type="LocalTimerTick";
+				event.paused=false;
+				event.time=currTick*timer.normDeltaTimeMSec;
+				if (timer.lastHandlerTime==-1)
+					event.delta=0;
+				else
+					event.delta=event.time-timer.lastHandlerTime;
+				timer.lastHandlerTime = event.time;
+				event.currTick = currTick;
+				event.lastTick = timer.currEvent.currTick;
+				
+				timer.currEvent = event;
+				timer.trigger("tick",event);
+			}
+
+			//	for printing debug messages
+			this.lastTick=0;
+			this.lastTime=0;
+			this.maxAvgDeltaTime=0;
+			this.minAvgDeltaTime=100000;
+			
+			this.syncServer=function(currTick)
+			{	var currTime=performance.now();
+				var tickdiff = this.nextTick - currTick;
+				var timediff = this.nextTime - tickdiff*this.normDeltaTimeMSec - currTime;
+				this.deltaTimeMSecAdjusted =  this.normDeltaTimeMSec - timediff*this.adjustFactor;
+										
+				if (this.deltaTimeMSecAdjusted<this.minDeltaTimeMSec)
+				{	this.deltaTimeMSecAdjusted = this.minDeltaTimeMSec;
+				}
+				if (this.deltaTimeMSecAdjusted>this.maxDeltaTimeMSec)
+				{	this.deltaTimeMSecAdjusted = this.maxDeltaTimeMSec;
+				}
+				
+				console.log("server tick="+currTick+" next local tick="+this.nextTick+" next timeout="+this.deltaTimeMSecAdjusted);
+
+				var timeDiff=currTime - this.lastTime;
+				var tickDiff=currTick - this.lastTick;
+				var avgDeltaTime = timeDiff/tickDiff;
+				this.maxAvgDeltaTime = (this.maxAvgDeltaTime<avgDeltaTime)?avgDeltaTime:this.maxAvgDeltaTime;
+				this.minAvgDeltaTime = (this.minAvgDeltaTime>avgDeltaTime)?avgDeltaTime:this.minAvgDeltaTime;
+								
+				console.log("delta time from server="+avgDeltaTime+" min="+this.minAvgDeltaTime+" max="+this.maxAvgDeltaTime);
+								
+				this.lastTime = currTime;
+				this.lastTick = currTick;
+			}
+			
+			this.getTickPerSecond = function()	{	return 1/this.normDeltaTimeMSec*1000;	}
+			
+			this.getTickEventPerSecond = function()
+				{	return this.getTickPerSecond()*this.maxLocalSubTick;
+				}
+			
+			this.start= function(startTick, handler)
+				{	//	start the timer
+					
+					//	startTick - the starting tick value of this LocalTimer
+					//	return true if successfully started, otherwise return false
+
+					if (this.maxLocalSubTick<1)
+					{	//	error in this value, hence cannot start
+						return false;
+					}
+					
+					this.nextTick = startTick+1;			// 	tick value of the coming tick
+					this.lastTime = performance.now();	//	time of this tick
+					this.nextTime = this.lastTime + this.deltaTimeMSecAdjusted;	//	time of coming tick
+					this.timeMSecPerSubTick=this.deltaTimeMSecAdjusted/this.maxLocalSubTick;	//	duration for one subtick
+
+					this.on("tick",handler);
+					setTimeout( this.timerHandler, this.timeMSecPerSubTick, this);
+					return true;
+				}
+		}
+		
+		function TimerEventHandler(event)
+		{	// console.log("timer tick="+event.currTick+" current time ="+event.time+" server tick="+app.gamestate.get('tick'));
+		
+			//	move the box horizontally, at 0.5px per 20ms
+			app.rubbishbin.x+=0.5;
+			if (app.rubbishbin.x>app.gamestate.get("canvas_width")-100)
+				app.rubbishbin.x=0;
+		
+			//	rotate the box clockwise, at 0.1deg per 20ms
+			var new_rot=app.rubbishbin.rotation+0.1;
+			app.rubbishbin.rotation=(new_rot>360)?new_rot-360:new_rot;
+			
+			//	change the box's transparency
+			var new_alpha=app.rubbishbin.alpha+0.01;
+			app.rubbishbin.alpha = (new_alpha>1)?0:new_alpha;
+			
+			//	sprite is moving horizontally at 0.5pix per 20ms
+			app.spritetp.x+=0.5;
+			if (app.spritetp.x>app.gamestate.get("canvas_width"))
+				app.spritetp.x=0;
+			
+			app.stage.update(event);
+		}			
+		
+		app.Timer = null;
+		
+		$(document).ready(	function(){
+				
+			var socket = io.connect();	//	establish a websocket connection with server
+			Backbone.socket=socket;		//	Backbone.sync use this socket connection to sync with the server
+			
+			Backbone.$ = $;				//	let Backbone to use the current jQuery library
+		
+			app.models.GameState = Backbone.Model.extend( {
+					model:	{	deltaTimeMSec:	0,
+								tick:	0,
+								state:	0,
+								canvas_width: 0,
+								canvas_height: 0
+							},
+					url:	"bbio_circles_moving_gamestate"
+					}
+					);
+					
+			app.gamestate = new app.models.GameState();
+			app.gamestate.fetch(	
+				{	success:	
+						function(model, response,options){
+						
+							console.log("game state fetched successfully");
+							
+							//	initialize local timer based on information from server
+							app.Timer = new LocalTimer(app.gamestate.get('deltaTimeMSec'),50);
+							var eventPerSecond=app.Timer.getTickEventPerSecond();
+							console.log("number of timer event per second = "+eventPerSecond);							
+							var status=app.Timer.start(app.gamestate.get('tick'),TimerEventHandler);
+							if (status)
+							{	console.log("LocalTimer started successfully");
+							} else
+							{	console.log("LocalTimer cannot start successfully, something wrong!!!");
+							}
+							
+							//	setup canvas based on information from server
+							$("#CirclesCanvas").attr("width",app.gamestate.get("canvas_width"));
+							$("#CirclesCanvas").attr("height",app.gamestate.get("canvas_height"));
+												
+							app.stage = new createjs.Stage("CirclesCanvas");
+
+							//	create the background of this stage
+							var background_graphics = new createjs.Graphics().beginFill("#101010")
+															.drawRect(0,0,app.gamestate.get("canvas_width"),app.gamestate.get("canvas_height"));
+							app.background = new createjs.Shape(background_graphics);
+							app.stage.addChild(app.background);		
+				
+							//	create a rubbish bin for deleting circles, on the lower right corner of the stage
+							var rubbishbin_graphics = new createjs.Graphics().beginFill("#0000ff")
+														.drawRect(0,0,100,100);
+							app.rubbishbin = new createjs.Shape(rubbishbin_graphics);
+							app.rubbishbin.x=25;
+							app.rubbishbin.y=25;
+							app.rubbishbin.regX = 25;
+							app.rubbishbin.regY = 25;
+							app.rubbishbin.skewX = 0;
+							app.rubbishbin.skewY = 0;
+							app.stage.addChild(app.rubbishbin);
+							
+							var spritesheettp = new createjs.SpriteSheet(fromTexturePacker);
+							app.spritetp = new createjs.Sprite(spritesheettp, "run" );
+							app.spritetp.regX = 25;
+							app.spritetp.regY = 24;
+							app.spritetp.x = app.stage.canvas.width / 2;   
+							app.spritetp.y = app.stage.canvas.height / 2;  
+							app.spritetp.scaleX =2;
+							app.spritetp.scaleY =2;
+							app.stage.addChild(app.spritetp);
+												
+							app.stage.update();
+								
+							app.gamestate.on_server_update_gamestate= function(data){
+								/*
+									var str="gamestate update:";
+									for (var name in data)
+									{	str+=name+"="+data[name]+" ";
+									}
+									console.log(str);
+								*/
+								
+								console.log("gamestate.tick="+data.tick);
+								app.gamestate.set(data);
+								
+								app.Timer.syncServer(app.gamestate.attributes.tick);
+									// provide server timing information for local timer to synchronize with server
+								};
+								
+								
+							_.bindAll(app.gamestate,"on_server_update_gamestate");
+							model.ioBind("update",app.gamestate.on_server_update_gamestate,app.gamestate);
+
+							
+							app.models.OneCircle = Backbone.Model.extend( {
+										default: 	{	pos_x: 	0,
+														pos_y: 	0,
+														vx:		0,
+														vy:		0,
+														radius: 10,
+														color:	"#000000"
+													},
+										validate:	function(attrs,options){
+														if (!$.isNumeric(attrs.pos_x))
+														{	return "pos_x is not a number";
+														}
+														if (!$.isNumeric(attrs.pos_y))
+														{	return "pos_y is not a number";
+														}
+														if (!$.isNumeric(attrs.vx))
+														{	return "vx is not a number";
+														}
+														if (!$.isNumeric(attrs.vy))
+														{	return "vy is not a number";
+														}
+														if (!$.isNumeric(attrs.radius))
+														{	return "radius is not a number";
+														}
+														
+														//	refer to http://learning.sd.polyu.edu.hk/x/-6PpAQ
+														var isOk  = /(^#[0-9A-F]{6}$)|(^#[0-9A-F]{3}$)/i.test(attrs.color);
+														if (!isOk)
+														{	return "color is not a valid hex color string";
+														}
+														
+														return;	//	no error
+													},
+										circleShape:	null,
+											}
+											);
+									//	a OneCircle class			
+
+							
+							app.collections.Circles = Backbone.Collection.extend( {
+									model:	app.models.OneCircle,
+									
+									url:	'bbio_circles',
+											//	url must have no "/" for .ioBind() to work properly
+									
+									createModel:	function(data){
+											console.log("OneCircle created, id="+data.id);
+											this.add( data );
+										},
+									
+									initialize:		function(models,options){
+										_.bindAll(this,"createModel");
+										this.ioBind("create",this.createModel,this);
+										}
+								});	
+
+							app.circles = new app.collections.Circles;
+						
+							_.extend(app.views, Backbone.Events);
+							app.views.addView=function(model,collection,options)
+							{	var a_view = new app.views.OneCircleView( {model: model } );
+							};
+							app.views.listenTo(app.circles,"add",app.views.addView);
+							
+							//	sync current state with server
+							app.circles.fetch({
+										success:	function(collection, response, options){
+														//	models in collection successfully loaded
+														//	"add" event will be generated for each model being created and added to collection, which triggers app.view.addView()
+													},
+										error:		function(collection, response, options){
+														console.log("failed, "+collection+" error="+response.errmsg);
+													}
+										});
+							
+						
+							app.views.OneCircleView = Backbone.View.extend(	{
+							
+								initialize: function() {
+										//	handle update on model as informed by server 
+										_.bindAll(this,"on_server_update_model");
+										this.model.ioBind("update",this.on_server_update_model,this);
+										
+										//	handle destroy on model as informed by server 						
+										_.bindAll(this,"on_server_destroy_model");
+										this.model.ioBind("delete",this.on_server_destroy_model,this);
+
+										this.listenTo(this.model, "remove", function() {	this.remove();	});
+											//	generated when this.model is removed from its collection
+											
+										this.listenTo(this.model, "change", this.render);
+										this.render();
+									},
+
+								on_server_destroy_model:	function(data){
+											//	data.id == id of the model to be removed
+											var model = app.circles.get(data.id);
+											if (model==undefined)
+											{	//	error in id returned
+												console.log("delete model from server failed, id="+data.id);
+											} else
+											{	console.log("delete model from server successful, id="+data.id);
+												app.circles.remove(model);
+											}
+										},
+
+								on_server_update_model:	function(data){
+										//	update the model with new data
+										this.model.set(data);
+											//	this generates the "change" event
+									},
+									
+								remove:	function()	{
+										app.stage.removeChild(this.model.circleShape);
+										app.stage.update();
+										console.log("circle removed, id="+this.model.id);
+									},
+									
+								render:	function()	{
+									var circleShape;
+									if (this.model.circleShape!=null)
+									{	circleShape=this.model.circleShape;
+									} else
+									{	circleShape=this.model.circleShape=new createjs.Shape();
+										app.stage.addChild(circleShape);
+										
+										circleShape.on("pressup",function(evt,view) {
+											console.log("pressup in circle, id="+view.model.id);
+											
+												var local_pt = app.rubbishbin.globalToLocal(evt.stageX,evt.stageY);
+												var hit=app.rubbishbin.hitTest(local_pt.x,local_pt.y);
+												if (hit)
+												{	//	delete this circle
+												
+													view.model.destroy(	
+														{	success: function(model, response,options){
+																		//	successfully removed on the server side, hence delete the model on the client side
+																		console.log("successfully destroyed model id="+model.id+" on server");
+																		app.circles.remove(model);
+																			//	this triggers the "remove" event on model
+																	},
+															error:	function(model, response,options){
+																		//	remove not successful, hence the object on client side is not removed
+																		console.log("failed in destroying model id="+model.id+" error="+response.errmsg);
+																	},
+															wait:	true	//	wait till the server to confirm the delete before actually destroying it on client side
+																			//	refer to Backbone.destroy in http://backbonejs.org/#Model-destroy
+														});
+												}
+											},null, false, this);	
+										
+										circleShape.on("pressmove",function(evt,view) {
+												var _pos_x=evt.stageX;
+												var _pos_y=evt.stageY; 
+										
+												view.model.save( {pos_x: _pos_x, pos_y: _pos_y},
+													{	success:	function(model,response,options){
+																	console.log("successfully saved model, id="+model.id);
+																},
+														error: 		function(model,response,options){
+																		//	not successful in save
+																		//	model is not changed, as "wait"=true
+																		console.log("failed in saving model, id="+model.id+" error="+response.errmsg);
+																	},
+														view:	this,
+														wait:	true	//	wait till the server to confirm the save before confirm the change on the model on client side
+																		//	if error in server, the model will not be updated on the client side
+																		//	may not be good in terms of responsiveness on the client side
+													}
+													);
+											},	null, false, this);	
+
+										circleShape.on("dblclick",function(evt,view) {
+												var _new_color = $("#circle_color").val();
+												var _new_vx = $("#circle_vx").val();
+												var _new_vy = $("#circle_vy").val();
+												
+												view.model.save( {color: _new_color, vx: _new_vx, vy: _new_vy},
+													{	success:	function(model,response,options){
+																	console.log("successfully saved model, id="+model.id);
+																},
+														error: 		function(model,response,options){
+																		//	not successful in save
+																		//	model is not changed, as "wait"=true
+																		console.log("failed in saving model, id="+model.id+" error="+response.errmsg);
+																	},
+														view:	this,
+														wait:	true	//	wait till the server to confirm the save before confirm the change on the model on client side
+																		//	if error in server, the model will not be updated on the client side
+																		//	may not be good in terms of responsiveness on the client side
+													}
+													);
+
+											},	null, false, this);	
+									}
+									
+									circleShape.graphics.clear();	//	remove all previous graphics instructions on this Shape
+									circleShape.graphics.beginFill(this.model.get("color")).
+											drawCircle(this.model.get("pos_x"), this.model.get("pos_y"), this.model.get("radius"));
+									
+									app.stage.update();
+									}
+								}
+								);
+								
+							app.background.on("dblclick", function(evt,_app){
+								var _pos_x = evt.stageX;
+								var _pos_y = evt.stageY;
+								var _color = $("#circle_color").val();
+								var _radius = $("#circle_radius").val();
+								var _vx = $("#circle_vx").val();
+								var _vy = $("#circle_vy").val();
+														
+								var a_circle = _app.circles.create( 
+															{	pos_x: _pos_x, 
+																pos_y: _pos_y, 
+																vx: _vx,
+																vy: _vy,
+																radius: _radius, 
+																color: _color
+															},
+															{	success:	function(model,response,options){
+																				console.log("success in creating model id="+model.id+" response="+response);
+																				//model.circleShape=null;
+																			},
+																error: 		function(model,response,options){
+																				//	not successful in save
+																				console.log("error in creating model id="+model.id+" error="+response.errmsg);
+																			},
+																wait:	true
+															}
+														);
+													}, null, false, app);
+								},	
+				
+					error:		function(model, response,options){
+									console.log("error in fetching game state");
+								}
+				}
+				);
+
+			
+			//
+			//	for controlling server to generate error, to facilitate debugging
+			//
+			$("#server_error").click( function(){
+				if (server_error_status)
+				{	server_error_status=false;
+					$("#server_error").html("Enable Server Error");
+				} else
+				{	server_error_status=true;
+					$("#server_error").html("Disable Server Error");
+				}
+				socket.emit("set_server_bbio_circles_error",{status: server_error_status});
+			});
+			
+			socket.on('update_server_bbio_circles_error', function(data){
+				server_error_status=data.status;
+				if (server_error_status)
+				{	$("#server_error").html("Disable Server Error");
+				} else
+				{	$("#server_error").html("Enable Server Error");
+				}
+			});
+		});
+
+	</script>
+</body>	
+
+
+</html>
+
