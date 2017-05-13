@@ -1,0 +1,71 @@
+* { -moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box; }
+
+html, body {
+    background: #ffffff;
+    height: 100%;
+    width: 100%;
+}
+
+#container {
+    background: #ffffff;
+    bottom: 0;
+    height: 100%;
+    left: 0;
+    margin: auto;
+    max-height: 320px;
+    max-width: 480px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100%;
+}
+
+#canvas {
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+#infoContainer {
+    background: #ffffff;
+    top: 0;
+    height: 100%;
+    left: 0;
+    margin: auto;
+    max-height: 160px;
+    max-width: 640px;
+    position: absolute;
+    right: 0;
+    width: 100%;
+}
+
+#info{
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+#EnemyInfoContainer {
+    background: #ffffff;
+    bottom: 0;
+    height: 100%;
+    left: 0;
+    margin: auto;
+    max-height: 160px;
+    max-width: 640px;
+    position: absolute;
+    right: 0;
+    width: 100%;
+}
+
+#EnemyInfo{
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
