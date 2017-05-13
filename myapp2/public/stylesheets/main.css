@@ -30,12 +30,12 @@ html, body {
 
 #infoContainer {
     background: #ffffff;
-    bottom: 0;
+    top: 0;
     height: 100%;
     left: 0;
     margin: auto;
     max-height: 160px;
-    max-width: 480px;
+    max-width: 640px;
     position: absolute;
     right: 0;
     width: 100%;
@@ -45,6 +45,27 @@ html, body {
     height: 100%;
     left: 0;
     position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+#EnemyInfoContainer {
+    background: #ffffff;
     bottom: 0;
+    height: 100%;
+    left: 0;
+    margin: auto;
+    max-height: 160px;
+    max-width: 640px;
+    position: absolute;
+    right: 0;
+    width: 100%;
+}
+
+#EnemyInfo{
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
     width: 100%;
 }

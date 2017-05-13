@@ -5,29 +5,35 @@
 function startGame() {
 
     'use strict';
-    
-    var $container, $infoContainer, canvas, infoCanvas, stage, infoStage, canvasW, canvasH, health, enemiesHealth = [],
-        manifest, totalLoaded, queue, matchSoundID, FireSoundID, attack,
-        map1, mapTiles, game, mapWidth, mapHeight, tileSheet, tiles, board, infoBoard, enemyPoint,playerPoint,
-        player, playerSheet, firstKey,FireSheet, Fire, fires = [], isfire, timer, timerMax, deadCount,
+    var $container, $infoContainer,$EnemyInfoContainer, canvas, infoCanvas, enemyInfoCanvas, stage, infoStage, enemyInfoStage,
+        canvasW, canvasH, PlayerText, EnemyText,
+        manifest, totalLoaded, queue, matchSoundID, FireSoundID, attack, pause,	viewKey,
+        PlayerFill = {fillHeart: null,fillTemp: null},
+        EnemyFill = {fillHeart: null,fillTemp: null},
+        map1, mapTiles, game, mapWidth, mapHeight, tileSheet, tiles, board, infoBoard, enemyInfoBoard, enemyPoint,playerPoint,
+        player, playerSheet, firstKey,FireSheet, Fire, fires = [], isfire, timer, timerMax, deadCount, EnemyTemp,PlayerTemp,
         enemy, enemySheet, enemies = [], randomTurn, directions = [0, 90, 180, 270], WoodSheet, Wood, woods = [],
         keysPressed = {
             38: 0,
             40: 0,
             37: 0,
             39: 0,
-			32: 0
+			32: 0,
+            80: 0,
         };
     
     $container = document.getElementById("container");
 	$infoContainer = document.getElementById("infoContainer");
-    //canvasW = 384;
-    //canvasH = 288;
+    $EnemyInfoContainer = document.getElementById("EnemyInfoContainer");
     canvasW = 480;
     canvasH = 320;
     timerMax = 30;
 	timer = 0;
+    pause = false;
+    EnemyTemp = 100;
+    PlayerTemp = 150;
 	deadCount = 0;
+    viewKey = 0;
     map1 = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0],
@@ -113,7 +119,7 @@ function startGame() {
 		player.lifeTimer = 0;
 		player.isfire = false;
 		player.fireNum = -1;
-		player.timeToBurn = 60;
+		player.temperature = PlayerTemp/2;
 		//player.attack = false;
         board.addChild(player);
     }
@@ -134,7 +140,7 @@ function startGame() {
         enemies[num].gotoAndPlay("stand");
 		enemies[num].isfire = false;
 		enemies[num].lifeTimer = 0;
-		enemies[num].timeToBurn = 30;
+		enemies[num].temperature = EnemyTemp/2;
 		enemies[num].fireNum = -1;
 		enemies[num].dead = false;		
         board.addChild(enemies[num]);
@@ -175,44 +181,53 @@ function startGame() {
 		//return num;
 	}
 	
+    function checkPosition(char)
+    {
+        var x,y,obj;
+        x = Math.floor((char.x) / tileSheet._frameWidth);
+        y = Math.floor((char.y) / tileSheet._frameHeight);
+        obj = {x: x,y: y};
+        return obj;
+    }
+    
 	//default function --- check the grid is walkable or not
     function checkCorners(char, dirx, diry) {
         
-        var formulaA, formulaB, formulaC, formulaD;
+        var upSide, downSide, leftSide, rightSide;
         
         if (dirx === 0) {
-            formulaC = Math.floor((char.x - char.width / 2) / tileSheet._frameWidth);
-            formulaD = Math.floor((char.x + char.width / 2) / tileSheet._frameWidth);
+            leftSide = Math.floor((char.x - char.width / 2) / tileSheet._frameWidth);
+            rightSide = Math.floor((char.x + char.width / 2) / tileSheet._frameWidth);
             if (diry === -1) { // up
-                formulaA = Math.floor(((char.y - char.width / 2) + (char.speed * diry)) / tileSheet._frameHeight);
-                char.topLeft = mapTiles["t_" + formulaA + "_" + formulaC];
-                char.topRight = mapTiles["t_" + formulaA + "_" + formulaD];
+                upSide = Math.floor(((char.y - char.width / 2) + (char.speed * diry)) / tileSheet._frameHeight);
+                char.topLeft = mapTiles["t_" + upSide + "_" + leftSide];
+                char.topRight = mapTiles["t_" + upSide + "_" + rightSide];
                 if (char.topLeft.walkable && char.topRight.walkable) {
                     return true;
                 }
             } else if (diry === 1) { // down
-                formulaB = Math.floor(((char.y + char.width / 2) + (char.speed * diry)) / tileSheet._frameHeight);
-                char.bottomLeft = mapTiles["t_" + formulaB + "_" + formulaC];
-                char.bottomRight = mapTiles["t_" + formulaB + "_" + formulaD];
+                downSide = Math.floor(((char.y + char.width / 2) + (char.speed * diry)) / tileSheet._frameHeight);
+                char.bottomLeft = mapTiles["t_" + downSide + "_" + leftSide];
+                char.bottomRight = mapTiles["t_" + downSide + "_" + rightSide];
                 if (char.bottomLeft.walkable && char.bottomRight.walkable) {
                     return true;
                 }
             }
         }
         if (diry === 0) {
-            formulaC = Math.floor((char.y - char.height / 2) / tileSheet._frameHeight);
-            formulaD = Math.floor((char.y + char.height / 2) / tileSheet._frameHeight);
+            leftSide = Math.floor((char.y - char.height / 2) / tileSheet._frameHeight);
+            rightSide = Math.floor((char.y + char.height / 2) / tileSheet._frameHeight);
             if (dirx === -1) { // left
-                formulaA = Math.floor(((char.x - char.width / 2) + (char.speed * dirx)) / tileSheet._frameWidth);
-                char.topLeft = mapTiles["t_" + formulaC + "_" + formulaA];
-                char.bottomLeft = mapTiles["t_" + formulaD + "_" + formulaA];
+                upSide = Math.floor(((char.x - char.width / 2) + (char.speed * dirx)) / tileSheet._frameWidth);
+                char.topLeft = mapTiles["t_" + leftSide + "_" + upSide];
+                char.bottomLeft = mapTiles["t_" + rightSide + "_" + upSide];
                 if (char.topLeft.walkable && char.bottomLeft.walkable) {
                     return true;
                 }
             } else if (dirx === 1) { // right
-                formulaB = Math.floor(((char.x + char.width / 2) + (char.speed * dirx)) / tileSheet._frameWidth);
-                char.topRight = mapTiles["t_" + formulaC + "_" + formulaB];
-                char.bottomRight = mapTiles["t_" + formulaD + "_" + formulaB];
+                downSide = Math.floor(((char.x + char.width / 2) + (char.speed * dirx)) / tileSheet._frameWidth);
+                char.topRight = mapTiles["t_" + leftSide + "_" + downSide];
+                char.bottomRight = mapTiles["t_" + rightSide + "_" + downSide];
                 if (char.topRight.walkable && char.bottomRight.walkable) {
                     return true;
                 }
@@ -303,22 +318,23 @@ function startGame() {
 					// if player and enemy have collission, enemy will wait 1 second to fire
 					if (!checkWater(player))
 					{
-						if (player.timeToBurn>0)
-							player.timeToBurn--;
+						if (player.temperature<PlayerTemp)
+							player.temperature+=2;
 					}
 					// if player is fired, and he will pass the fire to the enemy			
 					if (!enemies[e].isfire)
 					{
-						//if (enemies[e].timeToBurn>0)
-						//	enemies[e].timeToBurn--;
+						//if (enemies[e].temperature>0)
+						//	enemies[e].temperature--;
 						if (player.isfire)
 						{
-							if (enemies[e].timeToBurn>0)
-								enemies[e].timeToBurn -=30;
-							if (enemies[e].timeToBurn == 0)
+							if (enemies[e].temperature<EnemyTemp)
+								enemies[e].temperature += 50;
+							if (enemies[e].temperature >= EnemyTemp)
 							{
-								enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
-								enemies[e].isfire = true;
+                                enemies[e].temperature = EnemyTemp;
+								//enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
+                                //enemies[e].isfire = true;
 							}
 						}
 					}
@@ -341,7 +357,7 @@ function startGame() {
     
 	// if player and enemy have collission, enemy will wait num second to fire 
 	function waitForfire(){
-			if (player.timeToBurn == 0){
+			if (player.temperature >= PlayerTemp){
 			return true;
 		}
 		return false;
@@ -397,6 +413,7 @@ function startGame() {
 		//if (player.attack)
 		//{
 			player.gotoAndPlay("fire");
+            //console.log("x: "+checkPosition(player).x+" y: "+checkPosition(player).y);
 			for (var e = 0; e < enemies.length; e++) {
 				var enemyPoint = {x: enemies[e].x, y: enemies[e].y};
 				var playerPoint = {x: player.x, y: player.y};
@@ -408,12 +425,13 @@ function startGame() {
 					{
 						if (!enemies[e].isfire)
 						{
-							if (enemies[e].timeToBurn>0)
-								enemies[e].timeToBurn -=30;
-							if (enemies[e].timeToBurn == 0)
+							if (enemies[e].temperature<EnemyTemp)
+								enemies[e].temperature += 15;
+							if (enemies[e].temperature >= EnemyTemp)
 							{
-								enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
-								enemies[e].isfire = true;
+                                enemies[e].temperature = EnemyTemp;
+								//enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
+								//enemies[e].isfire = true;
 							}
 						}
 					}
@@ -437,7 +455,7 @@ function startGame() {
 	}
 	
 	//spread the fire from wood to character
-	function CheckWoodFire(){
+	function checkWoodFire(){
 		var w, e, distToPlayer, distToEnemy, enemyPoint, playerPoint, woodPoint;
         for (w = 0; w < woods.length; w++) {
 			if (!woods[w].destory)
@@ -449,9 +467,11 @@ function startGame() {
 					if (distToEnemy < enemies[e].width/2){
 						if (woods[w].isfire){
 							if (!enemies[e].isfire){
-								enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
-								enemies[e].isfire = true;
-							}	
+                                    enemies[e].temperature +=50;
+                            }
+                            if (enemies[e].temperature >=EnemyTemp){
+								enemies[e].temperature = EnemyTemp;
+							}
 						}
 						else if (enemies[e].isfire){
 								woods[w].fireNum = addFire(woods[w].x,woods[w].y);
@@ -465,8 +485,10 @@ function startGame() {
 				if (distToPlayer < player.width/2){
 					if (woods[w].isfire){
 						if (!player.isfire){
-							player.fireNum = addFire(player.x,player.y);
-							player.isfire = true;
+                            player.temperature +=50;
+                        }
+                        if (player.temperature >=PlayerTemp){ 
+							player.temperature = PlayerTemp;
 						}
 					}
 					else if (player.isfire){
@@ -481,6 +503,8 @@ function startGame() {
     document.addEventListener("keydown", function (e) {
         keysPressed[e.keyCode] = 1;
 		if (e.keyCode === 32) attack = true;
+        if (e.keyCode === 80) Pause();
+        if (e.keyCode >= 49 && e.keyCode <= 57) viewKey = (e.keyCode-49);
         if (!firstKey) { firstKey = e.keyCode; }
     });
     document.addEventListener("keyup", function (e) {
@@ -513,7 +537,7 @@ function startGame() {
 				checkAttack();
 				attack = false;
 				if(!matchSoundID){
-				matchSound();
+				    matchSound();
 				}
 			}		
         }
@@ -522,10 +546,12 @@ function startGame() {
 	// Add Mouse Click event here
 	function MouseEvent(){
 	stage.on("stagemousedown", function(evt) {
+        if(!pause){
 		checkAttack();
 		if(!matchSoundID){
 			matchSound();
 		}
+        }
 	});
 	
 	stage.on("stagemouseup", function(evt) {
@@ -539,11 +565,23 @@ function startGame() {
 		matchSoundID.on("complete", function(event){matchSoundID=null;});
 	}
 	
+    // play fire sound
 	function FireSound(){
 		FireSoundID = createjs.Sound.play("fire_sound");
 		FireSoundID.on("complete", function(event){FireSoundID=null;});
 	}
 	
+    //check fire and if is fire, play sound effect
+    function onFire(){
+        if(checkFire()){
+			if(!FireSoundID){
+				FireSound();
+				//console.log("Play Fire");
+			}
+			//console.log("Check Fire");
+		}
+    }
+    
 	// This function is used to update the fire position and attach to player and enemy
 	function checkFire(){
 		
@@ -630,67 +668,119 @@ function startGame() {
 		
 		return isfire;
 	}
-	
-	function checkWater(Character){
-		for (var row = 0; row < mapHeight; row++) {
-			for (var col = 0; col < mapWidth; col++) {
-				if (mapTiles["t_" + row + "_" + col].water){
-					var waterPoint = {x: mapTiles["t_" + row + "_" + col].x, y: mapTiles["t_" + row + "_" + col].y};
-					var CharPoint = {x: Character.x, y: Character.y};
-					var distToChar = pTheorem(waterPoint, CharPoint);
-					if (distToChar <= Character.width )
+    
+    function checkWater(Character){
+        var x , y;
+        x = checkPosition(Character).x;
+        y = checkPosition(Character).y;
+        if (mapTiles["t_" + y + "_" + x].water){
+            var waterPoint = {x: mapTiles["t_" + y + "_" + x].x, y: mapTiles["t_" + y + "_" + x].y};
+            var CharPoint = {x: Character.x, y: Character.y};
+            var distToChar = pTheorem(waterPoint, CharPoint);
+			if (distToChar <= Character.width )
+			{
+					if (Character === player)	
 					{
-						// if (Character.isfire)
-						// {
-							if (Character === player)	
-							{
-								if (Character.timeToBurn<60)
-								{
-									Character.timeToBurn++;
-									console.log("player recover");
-								}
-							}
-							else
-								if (Character.timeToBurn<30)
-									Character.timeToBurn++;
-							Character.isfire = false;
-							board.removeChild(fires[Character.fireNum]);
-							console.log("clear");
-							return true;
-						// }
+						if (Character.temperature>0)
+						{
+							Character.temperature--;
+							//console.log("player recover");
+						}
 					}
-				}
-			}
-		}
-		console.log("not clear");
-		return false;
-	}
+					else
+						if (Character.temperature>0)
+							Character.temperature--;
+					Character.isfire = false;
+					board.removeChild(fires[Character.fireNum]);
+					//console.log("clear");
+					return true;
+            }
+        }
+        //console.log("not clear");
+        return false;
+    }
+    
+    function updateTemperature(){
+        checkWater(player);
+        if (!checkWater(player)){
+            if (!player.isfire){
+                if (player.temperature>=PlayerTemp){
+                    player.fireNum = addFire(player.x,player.y);
+                    player.isfire = true;
+                }
+                else if (player.temperature<PlayerTemp/2){
+                    player.temperature++;
+                }
+                else if (player.temperature>PlayerTemp/2){
+                    player.temperature--;
+                }
+            }
+        }
+        for (var e =0;e<enemies.length;e++){
+            checkWater(enemies[e]);
+            if (!checkWater(enemies[e])){
+                if (!enemies[e].dead){
+                    if (!enemies[e].isfire){
+                        if (enemies[e].temperature>=EnemyTemp){
+                            enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
+                            //console.log("num "+e+": temp :"+enemies[e].temperature);
+                            enemies[e].isfire = true;
+                        }
+                        else if (enemies[e].temperature<EnemyTemp/2){
+                            enemies[e].temperature++;
+                        }
+                        else if (enemies[e].temperature>EnemyTemp/2){
+                            enemies[e].temperature--;
+                        }
+                    }
+                }
+            }
+        }
+    }
 	
+    function checkAliveEnemy(index){
+        if (index<enemies.length)
+            if (!enemies[index].dead)
+                return index;
+        for (var e =0;e<enemies.length;e++){
+            if (!enemies[e].dead){
+                return e;
+            }
+        }
+    }
+    
 	// default function --- time ticker, keep updating every frame, you can do something that need to update in here
     function handleTick() {
-        detectKeys();
-        enemyBrain();
-		CheckWoodFire();
-		//check fire and if is fire, play sound effect
-		if(checkFire()){
-			if(!FireSoundID){
-				FireSound();
-				console.log("Play Fire");
-			}
-			console.log("Check Fire");
-		}
-		if (100-player.lifeTimer>=0)
-			health.text = "Player Health:\t"+(100-player.lifeTimer) +"\t\tTime left to burn: "+player.timeToBurn;
-		for (var i = 0;i<enemies.length;i++){
-			if (60-enemies[i].lifeTimer>=0)
-			enemiesHealth[i].text = "Enemy "+ (i+1) + " Health:\t"+(60-enemies[i].lifeTimer)+"\t\tTime left to burn: "+enemies[i].timeToBurn;
-		}
-		checkWater(player);
-		for (var i = 0;i<enemies.length;i++)
-			checkWater(enemies[i]);
-		stage.update();
+        if (!pause){
+            detectKeys();
+            enemyBrain();
+            checkWoodFire();
+            onFire();
+            updateTemperature();
+            updateInfo();
+        }
+        stage.update();
 	}
-	//console.log("Timer: "+timer);
+    
+    //pause game
+    function Pause(){
+        pause = !pause;
+        if (pause){
+            for (var i=0; i<enemies.length;i++){
+                enemies[i].gotoAndStop(0);
+            }
+            for (var i=0; i<fires.length;i++){
+                fires[i].gotoAndStop(0);
+            }
+            FireSoundID.stop();
+        }
+        else {
+            for (var i=0; i<fires.length;i++){
+                fires[i].gotoAndPlay("fire");
+            }
+            FireSoundID.play();
+        }
+    }
     
 	//Info Canvas
 	function InfoBar(){
@@ -708,25 +798,144 @@ function startGame() {
             infoStage.addChild(infoBoard);
         }
 	}
+    
+    //EnemyInfo Canvas
+	function EnemyInfoBar(){
+		enemyInfoCanvas = document.getElementById("enemyInfo");
+        enemyInfoStage = new createjs.Stage(enemyInfoCanvas);
+        enemyInfoStage.enableMouseOver(30);
+		enemyInfoStage.enableDOMEvents(true);
+        createjs.Touch.enable(enemyInfoStage);
+        createjs.Ticker.addEventListener("tick", enemyInfoStage);
+		
+		if (!enemyInfoBoard) {
+            enemyInfoBoard = new createjs.Container();
+            enemyInfoBoard.x = 0;
+            enemyInfoBoard.y = 0;
+            enemyInfoStage.addChild(enemyInfoBoard);
+        }
+	}
+    
+    
 	
+    //update Info
+    function updateInfo(){
+        updateInfoBar(1/100*(100-player.lifeTimer),PlayerFill.fillHeart,"fillHeart");
+        updateInfoBar(1/PlayerTemp*player.temperature,PlayerFill.fillTemp,"fillTemp");
+        var e = checkAliveEnemy(viewKey);
+        EnemyText.text = "Enemy "+(e+1)+" :"
+        //console.log("e: "+e+" key: "+viewKey);
+        if (e==viewKey){
+            updateInfoBar(1/60*(60-enemies[e].lifeTimer),EnemyFill.fillHeart,"fillHeart");
+            updateInfoBar(1/EnemyTemp*enemies[e].temperature,EnemyFill.fillTemp,"fillTemp");
+        }
+        else {
+            updateInfoBar(1/60*(60-enemies[e].lifeTimer),EnemyFill.fillHeart,"fillHeart");
+            updateInfoBar(1/EnemyTemp*enemies[e].temperature,EnemyFill.fillTemp,"fillTemp");
+        }
+    }
+    
 	//create Text
 	function CreateText(){
-		health = new createjs.Text("Health: ", "20px Arial", "#ff7700");
-		health.x = 50;
-		health.y = 50;
-		health.textBaseline = "alphabetic";
-		infoBoard.addChild(health);
-		
-		for (var i = 0;i<3;i++)
-		{
-			enemiesHealth[i] = new createjs.Text("Health: ", "20px Arial", "#ff7700");
-			enemiesHealth[i].x = 50;
-			enemiesHealth[i].y = 50 + (i+1)*20;
-			enemiesHealth[i].textBaseline = "alphabetic";
-			infoBoard.addChild(enemiesHealth[i]);
-		}
+		PlayerText = new createjs.Text("Player: ", "20px Arial", "#ff7700");
+		PlayerText.x = 50;
+		PlayerText.y = 50;
+		PlayerText.textBaseline = "alphabetic";
+		infoBoard.addChild(PlayerText);
+        EnemyText = new createjs.Text("Enemy: ", "20px Arial", "#000000");
+		EnemyText.x = 50;
+		EnemyText.y = 50;
+		EnemyText.textBaseline = "alphabetic";
+		enemyInfoBoard.addChild(EnemyText);
 	}
-	
+    
+    //create Info Bar
+    function CreateInfoBar(icon,iconX,iconY,barX,barY,color,fill,fillName){
+        // Create a shape
+        var bar = new createjs.Shape().set({x:barX, y:barY}); // Move away from the top left
+        infoBoard.addChild(bar);
+        var icon = new createjs.Bitmap(icon);
+        icon.x = iconX;
+        icon.y = iconY;
+        // Draw the outline
+        bar.graphics.setStrokeStyle(2)
+            .beginStroke("black")
+            .drawRoundRect(-1,-1,204,32,7)
+            .endStroke();
+        // Draw the fill. Only set the style here
+        fill[fillName] = new createjs.Shape().set({x:barX, y:barY, scaleX:0});
+        fill[fillName].graphics.beginFill(color).drawRoundRect(0,0,202,30,6);
+        infoBoard.addChild(fill[fillName]);
+        infoBoard.addChild(icon);
+        
+        //special case : adding one more icon for temperature
+        if(fillName==="fillTemp")
+        {
+            var icon = new createjs.Bitmap(fireIcon);
+            icon.x = (barX+185);
+            icon.y = iconY-5;
+            infoBoard.addChild(icon);
+        }
+        // Tween the bar's width to 100.
+        createjs.Tween.get(fill[fillName]).to({scaleX:1}, 0, createjs.Ease.quadIn);
+    }
+    
+    //create Enemy Info Bar
+    function CreateEnemyInfoBar(icon,iconX,iconY,barX,barY,color,fill,fillName){
+        // Create a shape
+        var bar = new createjs.Shape().set({x:barX, y:barY}); // Move away from the top left
+        enemyInfoBoard.addChild(bar);
+        var icon = new createjs.Bitmap(icon);
+        icon.x = iconX;
+        icon.y = iconY;
+        // Draw the outline
+        bar.graphics.setStrokeStyle(2)
+            .beginStroke("black")
+            .drawRoundRect(-1,-1,204,32,7)
+            .endStroke();
+        // Draw the fill. Only set the style here
+        fill[fillName] = new createjs.Shape().set({x:barX, y:barY, scaleX:0});
+        fill[fillName].graphics.beginFill(color).drawRoundRect(0,0,202,30,6);
+        enemyInfoBoard.addChild(fill[fillName]);
+        enemyInfoBoard.addChild(icon);
+        
+        //special case : adding one more icon for temperature
+        if(fillName==="fillTemp")
+        {
+            var icon = new createjs.Bitmap(fireIcon);
+            icon.x = (barX+185);
+            icon.y = iconY-5;
+            enemyInfoBoard.addChild(icon);
+        }
+        // Tween the bar's width to 100.
+        createjs.Tween.get(fill[fillName]).to({scaleX:1}, 0, createjs.Ease.quadIn);
+    }
+    
+    //update value of InfoBar
+    function updateInfoBar(fraction,fill,fillName){
+        if(fillName==="fillTemp"){
+            var color = ["#0000A0","#ADD8E6","#FFA500","#ff0000","#A52A2A"];
+            if (fraction<=0.2){
+                fill.graphics.beginFill(color[0]).drawRoundRect(0,0,202,30,6);
+            }
+            else if (fraction<=0.4){
+                fill.graphics.beginFill(color[1]).drawRoundRect(0,0,202,30,6);
+            }
+            else if (fraction<=0.6){
+                fill.graphics.beginFill(color[2]).drawRoundRect(0,0,202,30,6);
+            }
+            else if (fraction<=0.8){
+                fill.graphics.beginFill(color[3]).drawRoundRect(0,0,202,30,6);
+            }
+            else if (fraction<=1){
+                fill.graphics.beginFill(color[4]).drawRoundRect(0,0,202,30,6);
+            }
+            
+        }
+        //console.log(fill+":"+fraction);   
+        createjs.Tween.get(fill).to({scaleX:fraction}, 0, createjs.Ease.quadIn);
+    }
+    
 	//create spiriteSheet
 	function CreateSpirite(){
 		        // animation frames are not required
@@ -826,11 +1035,22 @@ function startGame() {
 		
 		// Info Canvas
 		InfoBar();
-		
-		//Create Health Text
+        var value = 40;
+        
+        //create the player health and temperature bar
+        CreateInfoBar(heartIcon,15+value,35+value/2,50+value,50+value/2,"#ff0000",PlayerFill,"fillHeart");
+        CreateInfoBar(tempIcon,250+value,30+value/2,290+value,50+value/2,"blue",PlayerFill,"fillTemp");
+        
+        // Enemy Info Canvas
+        EnemyInfoBar();
+        
+        //create the enemy health and temperature bar
+        CreateEnemyInfoBar(heartIcon,15+value,35+value/2,50+value,50+value/2,"#ff0000",EnemyFill,"fillHeart");
+        CreateEnemyInfoBar(tempIcon,250+value,30+value/2,290+value,50+value/2,"blue",EnemyFill,"fillTemp");
+        
+		//Create Info Text
 		CreateText();
-
-		
+        
 		//create spiriteSheet
 		CreateSpirite();
 
@@ -850,7 +1070,6 @@ function startGame() {
 	addEnemy(1, 1, 0);
     addEnemy(6, 4, 0);
 	addEnemy(10, 5, 0);
-	
 	
 //}());
 };

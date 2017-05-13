@@ -1,4 +1,4 @@
-var queue;
+var queue,heartIcon,tempIcon,fireIcon;
 
 function Menu(){
 	
@@ -25,7 +25,10 @@ function Menu(){
 			{src: "images/main2.png", id: "menu"},
 			{src: "images/new_game.png", id: "start"},
 			{src: "images/continue.png", id: "continue"},
-			{src: "images/multi_icon.png", id: "multi"}
+			{src: "images/multi_icon.png", id: "multi"},
+            {src: "images/heart.png", id:"heart"},
+            {src: "images/temp.png", id:"temp"},
+            {src: "images/fire_icon.png", id:"fireIcon"}
         ];
         totalLoaded = 0;
         
@@ -57,6 +60,9 @@ function Menu(){
 			startBtn = queue.getResult("start");
 			continueBtn = queue.getResult("continue");
 			multiBtn = queue.getResult("multi");
+            heartIcon = queue.getResult("heart");
+            tempIcon = queue.getResult("temp");
+            fireIcon = queue.getResult("fireIcon");
 			//Create new Bitmap after preloading the image
 			var myMenu = new createjs.Bitmap(menu);
 			var myStart = new createjs.Bitmap(startBtn);
