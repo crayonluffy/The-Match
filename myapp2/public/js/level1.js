@@ -6,13 +6,13 @@ function startGame() {
 
     'use strict';
     var $container, $infoContainer,$EnemyInfoContainer, canvas, infoCanvas, enemyInfoCanvas, stage, infoStage, enemyInfoStage,
-        canvasW, canvasH, PlayerText, EnemyText,
-        manifest, totalLoaded, queue, matchSoundID, FireSoundID, attack, pause,	viewKey,
+        canvasW, canvasH, PlayerText, EnemyText, selectMenu = {menu:null,fire:1},
+        manifest, totalLoaded, queue, matchSoundID, FireSoundID, MainSoundID, attack, pause,	viewKey,desination,desinationPath,easystar,
         PlayerFill = {fillHeart: null,fillTemp: null},
         EnemyFill = {fillHeart: null,fillTemp: null},
         map1, mapTiles, game, mapWidth, mapHeight, tileSheet, tiles, board, infoBoard, enemyInfoBoard, enemyPoint,playerPoint,
         player, playerSheet, firstKey,FireSheet, Fire, fires = [], isfire, timer, timerMax, deadCount, EnemyTemp,PlayerTemp,
-        enemy, enemySheet, enemies = [], randomTurn, directions = [0, 90, 180, 270], WoodSheet, Wood, woods = [],
+        enemy, enemySheet, enemies = [], WoodSheet, Wood, woods = [],
         keysPressed = {
             38: 0,
             40: 0,
@@ -21,19 +21,18 @@ function startGame() {
 			32: 0,
             80: 0,
         };
-    
     $container = document.getElementById("container");
 	$infoContainer = document.getElementById("infoContainer");
     $EnemyInfoContainer = document.getElementById("EnemyInfoContainer");
-    canvasW = 480;
-    canvasH = 320;
-    timerMax = 30;
+    canvasW = 500;
+    canvasH = 350;
+    timerMax = 90;
 	timer = 0;
     pause = false;
     EnemyTemp = 100;
     PlayerTemp = 150;
 	deadCount = 0;
-    viewKey = 0;
+    viewKey = 1;
     map1 = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0],
@@ -105,17 +104,16 @@ function startGame() {
     }
     
 	//default function --- add enemy, And I add some propoty like isfire and lifeTimer
-    function addPlayer(rot) {
+    function addPlayer() {
         player.name = "player";
         player.x = Math.floor(canvasW / 50 / 2) * 50 + 25;
-        player.y = Math.floor(canvasH / 50 / 2) * 50 + 25;
+        player.y = Math.floor(canvasH / 50 / 2) * 50 + 75;
         player.regX = 0;
         player.regY = 0;
-        player.rotation = rot;
         player.speed = 6;
         player.height = 34;
         player.width = 34;
-        player.gotoAndStop("stand");
+        player.gotoAndPlay("stand");
 		player.lifeTimer = 0;
 		player.isfire = false;
 		player.fireNum = -1;
@@ -125,7 +123,7 @@ function startGame() {
     }
     
 	//default function --- add enemy, And I add some propoty like isfire
-    function addEnemy(x, y, rot) {
+    function addEnemy(x, y) {
         var num = enemies.length;
         enemies[num] = enemy.clone();
         enemies[num].name = "enemy" + enemies.length;
@@ -133,7 +131,6 @@ function startGame() {
         enemies[num].y = y * tileSheet._frameHeight + (tileSheet._frameHeight / 2);
         enemies[num].regX = 0;
         enemies[num].regY = 0;
-        enemies[num].rotation = rot;
         enemies[num].speed = 2;
         enemies[num].height = 34;
         enemies[num].width = 34;
@@ -183,6 +180,14 @@ function startGame() {
 	
     function checkPosition(char)
     {
+        var x,y,obj;
+        x = Math.floor((char.x-board.x) / tileSheet._frameWidth);
+        y = Math.floor((char.y-board.y) / tileSheet._frameHeight);
+        obj = {x: x,y: y};
+        return obj;
+    }
+    
+    function checkPlayerPosition(char){
         var x,y,obj;
         x = Math.floor((char.x) / tileSheet._frameWidth);
         y = Math.floor((char.y) / tileSheet._frameHeight);
@@ -264,27 +269,19 @@ function startGame() {
                 char.x += dirx * char.speed;
             }
         }
+        if (board.x<=-300)
+            board.x=-300;
+        if (board.y<-175)
+            board.y=-175;
+        if (board.x>=0)
+            board.x=0;
+        if (board.y>25)
+            board.y=25;
+        //console.log("BoardX: "+board.x+" BoardY: "+board.y);
     }
     //default function --- get the distance
     function pTheorem(point1, point2) {
         return Math.floor(Math.sqrt(((point2.x - point1.x) * (point2.x - point1.x)) + ((point2.y - point1.y) * (point2.y - point1.y))));
-    }
-    //default function --- i dont know
-    function getAngle(point1, point2) {
-        
-        var deltaX, deltaY, angle;
-        
-        deltaX = point2.x - point1.x;
-        deltaY = point2.y - point1.y;
-        
-        angle = Math.atan2(deltaY, deltaX);
-        
-        if (angle < 0) {
-            angle += 2 * Math.PI;
-        }
-        
-        return angle * 180 / Math.PI;
-        
     }
     
 	//used to let enemy attack player
@@ -306,14 +303,14 @@ function startGame() {
             distToPlayer = pTheorem(enemyPoint, playerPoint);
 			if (!enemies[e].dead)
 			{
-				if (distToPlayer > player.width)
+				if (distToPlayer >= player.width-5)
 				{
 					moveChar(enemies[e],WalkToX(enemyPoint,playerPoint).x,0);
 					moveChar(enemies[e],0,WalkToY(enemyPoint,playerPoint).y);
 					enemies[e].gotoAndStop("stand");
 				}
 				
-				else if (distToPlayer <= player.width) {
+				else if (distToPlayer < player.width-5) {
 					Fire();
 					// if player and enemy have collission, enemy will wait 1 second to fire
 					if (!checkWater(player))
@@ -329,7 +326,7 @@ function startGame() {
 						if (player.isfire)
 						{
 							if (enemies[e].temperature<EnemyTemp)
-								enemies[e].temperature += 50;
+								enemies[e].temperature += 20;
 							if (enemies[e].temperature >= EnemyTemp)
 							{
                                 enemies[e].temperature = EnemyTemp;
@@ -412,30 +409,61 @@ function startGame() {
 	function checkAttack(){
 		//if (player.attack)
 		//{
-			player.gotoAndPlay("fire");
+            if (selectMenu.fire==1)
+                player.gotoAndPlay("leftFire");
+            else if (selectMenu.fire==2)
+                player.gotoAndPlay("rightFire");
             //console.log("x: "+checkPosition(player).x+" y: "+checkPosition(player).y);
 			for (var e = 0; e < enemies.length; e++) {
 				var enemyPoint = {x: enemies[e].x, y: enemies[e].y};
 				var playerPoint = {x: player.x, y: player.y};
 				var distToPlayer = pTheorem(enemyPoint, playerPoint);
-				
-				if (distToPlayer < player.width )
-				{
-					if (!checkWater(enemies[e]))
-					{
-						if (!enemies[e].isfire)
-						{
-							if (enemies[e].temperature<EnemyTemp)
-								enemies[e].temperature += 15;
-							if (enemies[e].temperature >= EnemyTemp)
-							{
-                                enemies[e].temperature = EnemyTemp;
-								//enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
-								//enemies[e].isfire = true;
-							}
-						}
-					}
-				}
+				if (selectMenu.fire==1)
+                {
+                    if(enemies[e].x<=player.x)
+                    {
+                        if (distToPlayer <= player.width )
+                        {
+                            if (!checkWater(enemies[e]))
+                            {
+                                if (!enemies[e].isfire)
+                                {
+                                    if (enemies[e].temperature < EnemyTemp)
+                                        enemies[e].temperature += 5;
+                                    if (enemies[e].temperature >= EnemyTemp)
+                                    {
+                                        enemies[e].temperature = EnemyTemp;
+                                        //enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
+                                        //enemies[e].isfire = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (selectMenu.fire==2)
+                {
+                    if(enemies[e].x>=player.x)
+                    {
+                        if (distToPlayer <= player.width )
+                        {
+                            if (!checkWater(enemies[e]))
+                            {
+                                if (!enemies[e].isfire)
+                                {
+                                    if (enemies[e].temperature < EnemyTemp)
+                                        enemies[e].temperature += 5;
+                                    if (enemies[e].temperature >= EnemyTemp)
+                                    {
+                                        enemies[e].temperature = EnemyTemp;
+                                        //enemies[e].fireNum = addFire(enemies[e].x,enemies[e].y);
+                                        //enemies[e].isfire = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 			}
 			for (var w = 0; w < woods.length; w++) {
 				var woodPoint = {x: woods[w].x, y: woods[w].y};
@@ -467,7 +495,7 @@ function startGame() {
 					if (distToEnemy < enemies[e].width/2){
 						if (woods[w].isfire){
 							if (!enemies[e].isfire){
-                                    enemies[e].temperature +=50;
+                                    enemies[e].temperature +=5;
                             }
                             if (enemies[e].temperature >=EnemyTemp){
 								enemies[e].temperature = EnemyTemp;
@@ -485,7 +513,7 @@ function startGame() {
 				if (distToPlayer < player.width/2){
 					if (woods[w].isfire){
 						if (!player.isfire){
-                            player.temperature +=50;
+                            player.temperature +=5;
                         }
                         if (player.temperature >=PlayerTemp){ 
 							player.temperature = PlayerTemp;
@@ -504,7 +532,7 @@ function startGame() {
         keysPressed[e.keyCode] = 1;
 		if (e.keyCode === 32) attack = true;
         if (e.keyCode === 80) Pause();
-        if (e.keyCode >= 49 && e.keyCode <= 57) viewKey = (e.keyCode-49);
+        if (e.keyCode >= 49 && e.keyCode <= 57) viewKey = (e.keyCode-48);
         if (!firstKey) { firstKey = e.keyCode; }
     });
     document.addEventListener("keyup", function (e) {
@@ -517,19 +545,15 @@ function startGame() {
     function detectKeys() {
         
         if (keysPressed[38] === 1) { // up
-            //if (player.currentAnimation !== "walk") { player.gotoAndPlay("walk"); }
             moveChar(player, 0, -1);
         }
         if (keysPressed[40] === 1) { // down
-            //if (player.currentAnimation !== "walk") { player.gotoAndPlay("walk"); }
             moveChar(player, 0, 1);
         }
         if (keysPressed[37] === 1) { // left
-            //if (player.currentAnimation !== "walk") { player.gotoAndPlay("walk"); }
             moveChar(player, -1, 0);
         }
         if (keysPressed[39] === 1) { // right
-            //if (player.currentAnimation !== "walk") { player.gotoAndPlay("walk"); }
             moveChar(player, 1, 0);
         }
         if (keysPressed[32] === 1) { // attack
@@ -545,12 +569,58 @@ function startGame() {
 	
 	// Add Mouse Click event here
 	function MouseEvent(){
+    stage.canvas.addEventListener("wheel", function(e) {
+        checkAttack();
+        if(!matchSoundID){
+            matchSound();
+        }
+	   //console.log(e);
+    });
 	stage.on("stagemousedown", function(evt) {
+        var obj = {x:evt.stageX,y:evt.stageY};
         if(!pause){
-		checkAttack();
-		if(!matchSoundID){
-			matchSound();
-		}
+            switch (btnCode) {
+            case 0:
+                //console.log('Left button clicked.');
+                if(!desinationPath){
+                    moveToDestination(checkPosition(obj));
+                }
+                else if (desinationPath.x!=obj.x || desinationPath.y!=obj.y){
+                    moveToDestination(checkPosition(obj));
+                    //console.log("destination change");
+                }
+            break;
+
+            case 1:
+                console.log('Middle button clicked.');
+            break;
+
+            case 2:
+                Pause();
+                console.log('Right button clicked.');
+            break;
+
+            default:
+                console.log('Unexpected code: ' + btnCode);
+            }            
+        }
+        else {
+            if (btnCode==0){
+                var x= evt.stageX;
+                var y = evt.stageY;
+                if (x<=canvasW/2){
+                    lhandIcon.alpha = 1;
+                    rhandIcon.alpha = 0.7;
+                    selectMenu.fire = 1;
+                }
+                else if (x>canvasW/2){
+                    lhandIcon.alpha = 0.7;
+                    rhandIcon.alpha = 1;
+                    selectMenu.fire = 2;
+                }
+            }
+            if (btnCode==2)
+                Pause();
         }
 	});
 	
@@ -559,10 +629,80 @@ function startGame() {
 	});
 	}
 	
+    //create pathfinding
+    function createPath(){
+        easystar = new EasyStar.js();
+        easystar.setGrid(map1);
+        easystar.setAcceptableTiles([1,2]);
+    }
+    
+    // move to destination using pathfinding: easystar
+    function moveToDestination(obj){
+        if (mapTiles["t_" + obj.y + "_" + obj.x].walkable){
+            createPath();
+            var x = checkPlayerPosition(player).x;
+            var y = checkPlayerPosition(player).y;
+            easystar.findPath(x, y, obj.x, obj.y, function( path ) {
+                if (path === null) {
+                    console.log("Path was not found.");
+                } else {
+
+                    var movement = createjs.Tween.get(player,{override:true}).to({x: player.x, y: player.y },0);
+                    //if (character==player)
+                    var BoardMovement = createjs.Tween.get(board,{override:true}).to({x: board.x, y: board.y },0);
+                    console.log("x:"+x+" y: "+y);
+                    if (path.length>1)
+                        desinationPath = {x:path[path.length-1].x, y:path[path.length-1].y};
+                    for (var i=1;i<path.length;i++){
+                        var X = path[i].x*tileSheet._frameWidth+tileSheet._frameWidth/2;
+                        var Y = path[i].y*tileSheet._frameHeight+tileSheet._frameHeight/2;
+                        var bX = (path[i].x-path[i-1].x)*tileSheet._frameWidth;
+                        var bY = (path[i].y-path[i-1].y)*tileSheet._frameHeight;
+                        console.log("Path was found. The first Point is " + X + " " + Y);
+                        console.log(bX+" by: "+bY);
+                        movement.to({x: X, y: Y },150).call(function(){
+                            console.log("player x: "+player.x+" X: "+X+" y: "+player.y+" Y: "+Y);
+                        });
+                        //if (character==player){
+                            //restrict the camera
+                            if (X<canvasW/2){
+                                if (Y<canvasH/2)
+                                    BoardMovement.to({x: 0, y: 25 },250);
+                                else if (Y>canvasH/2)
+                                    BoardMovement.to({x: 0, y: (-Y+canvasH/2) },250);
+                                //else if (500-Y<canvas/2)
+                            }
+                            else if (X>canvasW/2){
+                                if (Y<canvasH/2)
+                                    BoardMovement.to({x: (-X+canvasW/2), y: 25 },250);
+                                else if (Y>canvasH/2)
+                                    BoardMovement.to({x: (-X+canvasW/2), y: (-Y+canvasH/2) },250);
+                            }
+                            else if ((800-X)<canvasW/2){
+                                if (Y<canvasH/2)
+                                    BoardMovement.to({x: (-800+canvasW), y: 25 },250);
+                                else if (Y>canvasH/2)
+                                    BoardMovement.to({x: (-800+canvasW), y: (-Y+canvasH/2) },250);
+                            }
+                            else if ((800-X)>canvasW/2){
+                                if (Y<canvasH/2)
+                                    BoardMovement.to({x: (-X+canvasW/2), y: 25 },250);
+                                else if (Y>canvasH/2)
+                                    BoardMovement.to({x: (-X+canvasW/2), y: (-Y+canvasH/2) },250);
+                           // }
+                        }
+                        
+                    }
+                }
+            });
+            easystar.calculate();
+        }
+    }
+    
 	// create match Sound
 	function matchSound(){
 		matchSoundID = createjs.Sound.play("match_sound");
-		matchSoundID.on("complete", function(event){matchSoundID=null;});
+		matchSoundID.on("complete", function(event){matchSoundID=null;player.gotoAndStop(0)});
 	}
 	
     // play fire sound
@@ -571,6 +711,13 @@ function startGame() {
 		FireSoundID.on("complete", function(event){FireSoundID=null;});
 	}
 	
+    //play main bgm
+    function MainSound(){
+        MainSoundID = createjs.Sound.play("main");
+        //MainSoundID.volume = 0.5;
+		MainSoundID.on("complete", function(event){MainSoundID=null;});
+    }
+    
     //check fire and if is fire, play sound effect
     function onFire(){
         if(checkFire()){
@@ -602,7 +749,7 @@ function startGame() {
 				player.lifeTimer++;
 			}
 			// timerMax = 30 frames = 1s
-			if (player.lifeTimer>(timerMax*4-20))
+			if (player.lifeTimer>(timerMax*4))
 			{
 				alert("You are dead!");
 				player.lifeTimer = 0;
@@ -636,7 +783,7 @@ function startGame() {
 						enemies[e].dead = true;
 						//enemies[e].isfire = false;
 						deadCount++;
-						console.log("DeadCount: "+deadCount);
+						//console.log("DeadCount: "+deadCount);
 					}
 				}
 			}
@@ -645,9 +792,12 @@ function startGame() {
 		if (deadCount == enemies.length)
 		{
 			alert("You win!");
-			console.log(enemies.length);
-			deadCount = 0;
-			location.reload();
+			//console.log(enemies.length);
+			//deadCount = 0;
+            stage.removeAllChildren();
+            stage.removeAllEventListeners();
+            startGame2();
+//			location.reload();
 		}
 		
 		//check fire on wood
@@ -669,10 +819,11 @@ function startGame() {
 		return isfire;
 	}
     
+    //check char is on water or not
     function checkWater(Character){
         var x , y;
-        x = checkPosition(Character).x;
-        y = checkPosition(Character).y;
+        x = checkPlayerPosition(Character).x;
+        y = checkPlayerPosition(Character).y;
         if (mapTiles["t_" + y + "_" + x].water){
             var waterPoint = {x: mapTiles["t_" + y + "_" + x].x, y: mapTiles["t_" + y + "_" + x].y};
             var CharPoint = {x: Character.x, y: Character.y};
@@ -700,6 +851,7 @@ function startGame() {
         return false;
     }
     
+    //update temperature
     function updateTemperature(){
         checkWater(player);
         if (!checkWater(player)){
@@ -738,47 +890,63 @@ function startGame() {
         }
     }
 	
+    //check num of enemies alive
     function checkAliveEnemy(index){
         if (index<enemies.length)
-            if (!enemies[index].dead)
-                return index;
+            if (!enemies[index-1].dead)
+                return (index);
         for (var e =0;e<enemies.length;e++){
             if (!enemies[e].dead){
-                return e;
+                return (e+1);
             }
         }
+        return false;
     }
     
 	// default function --- time ticker, keep updating every frame, you can do something that need to update in here
     function handleTick() {
-        if (!pause){
-            detectKeys();
-            enemyBrain();
-            checkWoodFire();
-            onFire();
-            updateTemperature();
-            updateInfo();
+        if (deadCount<3){
+            if (!pause){
+                detectKeys();
+                enemyBrain();
+                checkWoodFire();
+                onFire();
+                updateTemperature();
+                updateInfo();
+            }
+            else{
+                for (var i=0; i<enemies.length;i++){
+                    enemies[i].gotoAndStop(0);
+                }
+            }
+            stage.update();
         }
-        stage.update();
-	}
+    }
     
     //pause game
     function Pause(){
         pause = !pause;
         if (pause){
+            player.gotoAndStop(0);
             for (var i=0; i<enemies.length;i++){
                 enemies[i].gotoAndStop(0);
             }
             for (var i=0; i<fires.length;i++){
                 fires[i].gotoAndStop(0);
             }
-            FireSoundID.stop();
+            if (FireSoundID)
+                FireSoundID.stop();
+            if (!selectMenu.menu)
+                SelectMenu();
+            else updateSelectMenu();
         }
         else {
             for (var i=0; i<fires.length;i++){
                 fires[i].gotoAndPlay("fire");
             }
-            FireSoundID.play();
+            if (FireSoundID)
+                FireSoundID.play();
+            updateSelectMenu();
         }
     }
     
@@ -816,22 +984,24 @@ function startGame() {
         }
 	}
     
-    
-	
     //update Info
     function updateInfo(){
-        updateInfoBar(1/100*(100-player.lifeTimer),PlayerFill.fillHeart,"fillHeart");
+        updateInfoBar(1/(timerMax*4)*(timerMax*4-player.lifeTimer),PlayerFill.fillHeart,"fillHeart");
         updateInfoBar(1/PlayerTemp*player.temperature,PlayerFill.fillTemp,"fillTemp");
         var e = checkAliveEnemy(viewKey);
-        EnemyText.text = "Enemy "+(e+1)+" :"
+        EnemyText.text = "Enemy "+(e)+" :"
         //console.log("e: "+e+" key: "+viewKey);
-        if (e==viewKey){
-            updateInfoBar(1/60*(60-enemies[e].lifeTimer),EnemyFill.fillHeart,"fillHeart");
-            updateInfoBar(1/EnemyTemp*enemies[e].temperature,EnemyFill.fillTemp,"fillTemp");
-        }
-        else {
-            updateInfoBar(1/60*(60-enemies[e].lifeTimer),EnemyFill.fillHeart,"fillHeart");
-            updateInfoBar(1/EnemyTemp*enemies[e].temperature,EnemyFill.fillTemp,"fillTemp");
+        if (enemies.length>0){
+            if (e){
+                if (e===viewKey){
+                    updateInfoBar(1/(timerMax*2)*(timerMax*2-enemies[e-1].lifeTimer),EnemyFill.fillHeart,"fillHeart");
+                    updateInfoBar(1/EnemyTemp*enemies[e-1].temperature,EnemyFill.fillTemp,"fillTemp");
+                }
+                else {
+                        updateInfoBar(1/(timerMax*2)*(timerMax*2-enemies[e-1].lifeTimer),EnemyFill.fillHeart,"fillHeart");
+                        updateInfoBar(1/EnemyTemp*enemies[e-1].temperature,EnemyFill.fillTemp,"fillTemp");
+                }
+            }
         }
     }
     
@@ -848,6 +1018,76 @@ function startGame() {
 		EnemyText.textBaseline = "alphabetic";
 		enemyInfoBoard.addChild(EnemyText);
 	}
+    
+    //update Select menu
+    function updateSelectMenu(){
+        if (pause){
+            selectMenu.menu.x = -board.x+canvasW/2;
+            selectMenu.menu.y = -board.y+canvasH/2;
+            bodyIcon.x = selectMenu.menu.x-139;
+            bodyIcon.y = selectMenu.menu.y-155;
+            headIcon.x = selectMenu.menu.x-85;
+            headIcon.y = selectMenu.menu.y-100;
+            lhandIcon.x = selectMenu.menu.x-75;
+            lhandIcon.y = selectMenu.menu.y-75;
+            rhandIcon.x = selectMenu.menu.x-85;
+            rhandIcon.y = selectMenu.menu.y-75;
+            llegIcon.x = selectMenu.menu.x-215;
+            llegIcon.y = selectMenu.menu.y-20;
+            rlegIcon.x = selectMenu.menu.x-175;
+            rlegIcon.y = selectMenu.menu.y-10;
+            selectMenu.menu.alpha = 0.7;
+            bodyIcon.alpha = 0.7;
+            headIcon.alpha = 0.7;
+            lhandIcon.alpha = 0.7;
+            rhandIcon.alpha = 0.7;
+            llegIcon.alpha = 0.7;
+            rlegIcon.alpha = 0.7;
+        }
+        else{
+            selectMenu.menu.alpha = 0;
+            bodyIcon.alpha = 0;
+            headIcon.alpha = 0;
+            lhandIcon.alpha = 0;
+            rhandIcon.alpha = 0;
+            llegIcon.alpha = 0;
+            rlegIcon.alpha = 0;
+        }
+    }
+    
+    //create Select menu
+    function SelectMenu(){
+        var x = -board.x;
+        var y = -board.y;
+        selectMenu.menu = new createjs.Shape().set({x:(x+canvasW/2), y:(y+canvasH/2), scaleX:1});
+        selectMenu.menu.graphics.beginFill("white").drawRoundRect(-125,-100,300,200,6);
+        selectMenu.menu.alpha = 0.7;
+        board.addChild(selectMenu.menu);
+        bodyIcon.x = selectMenu.menu.x-139;
+        bodyIcon.y = selectMenu.menu.y-155;
+        board.addChild(bodyIcon);
+        headIcon.x = selectMenu.menu.x-85;
+        headIcon.y = selectMenu.menu.y-100;
+        board.addChild(headIcon);
+        lhandIcon.x = selectMenu.menu.x-75;
+        lhandIcon.y = selectMenu.menu.y-75;
+        board.addChild(lhandIcon);
+        rhandIcon.x = selectMenu.menu.x-85;
+        rhandIcon.y = selectMenu.menu.y-75;
+        board.addChild(rhandIcon);
+        llegIcon.x = selectMenu.menu.x-215;
+        llegIcon.y = selectMenu.menu.y-20;
+        board.addChild(llegIcon);
+        rlegIcon.x = selectMenu.menu.x-175;
+        rlegIcon.y = selectMenu.menu.y-10;
+        board.addChild(rlegIcon);
+        bodyIcon.alpha = 0.7;
+        headIcon.alpha = 0.7;
+        lhandIcon.alpha = 0.7;
+        rhandIcon.alpha = 0.7;
+        llegIcon.alpha = 0.7;
+        rlegIcon.alpha = 0.7;
+    }
     
     //create Info Bar
     function CreateInfoBar(icon,iconX,iconY,barX,barY,color,fill,fillName){
@@ -908,7 +1148,7 @@ function startGame() {
             enemyInfoBoard.addChild(icon);
         }
         // Tween the bar's width to 100.
-        createjs.Tween.get(fill[fillName]).to({scaleX:1}, 0, createjs.Ease.quadIn);
+        createjs.Tween.get(fill[fillName]).to({scaleX:0.5}, 0, createjs.Ease.quadIn);
     }
     
     //update value of InfoBar
@@ -955,15 +1195,16 @@ function startGame() {
         playerSheet = new createjs.SpriteSheet({
             animations: {
                 stand: [0],
-                fire: [1, 3]
+                rightFire: [1,3],
+                leftFire: [5, 7]
             },
-            images: ["images/fm_fire_both.png"],
+            images: ["images/fm_both.png"],
             frames: {
                 height: 50,
                 width: 50,
                 regX: 25,
                 regY: 25,
-                count: 4
+                count: 8
             }
         });
         
@@ -972,15 +1213,15 @@ function startGame() {
         enemySheet = new createjs.SpriteSheet({
             animations: {
                 stand: [0],
-                fire: [1, 3]
+                fire: [1, 3],
             },
-            images: ["images/fm_fire_right.png"],
+            images: ["images/fm_fire_both.png"],
             frames: {
                 height: 50,
                 width: 50,
                 regX: 25,
                 regY: 25,
-                count: 4
+                count: 4,
             }
         });
         
@@ -997,7 +1238,7 @@ function startGame() {
                 width: 38,
                 regX: 19,
                 regY: 19,
-                count: 10
+                count: 10,
             }
         });
         
@@ -1046,15 +1287,16 @@ function startGame() {
         
         //create the enemy health and temperature bar
         CreateEnemyInfoBar(heartIcon,15+value,35+value/2,50+value,50+value/2,"#ff0000",EnemyFill,"fillHeart");
-        CreateEnemyInfoBar(tempIcon,250+value,30+value/2,290+value,50+value/2,"blue",EnemyFill,"fillTemp");
-        
+        CreateEnemyInfoBar(tempIcon,250+value,30+value/2,290+value,50+value/2,"orange",EnemyFill,"fillTemp");
+                
 		//Create Info Text
 		CreateText();
         
 		//create spiriteSheet
 		CreateSpirite();
 
-        
+        //play bgm music
+        MainSound();
     }
     // default function --- initialization and build the map, add the player and enemy
 	init();
@@ -1066,10 +1308,10 @@ function startGame() {
 				addWood(col,row);
 		}
 	}
-	addPlayer(0);
-	addEnemy(1, 1, 0);
-    addEnemy(6, 4, 0);
-	addEnemy(10, 5, 0);
-	
+	addPlayer();
+    addEnemy(6, 4);
+	addEnemy(10, 5);
+	addEnemy(1, 1);
+//	
 //}());
 };

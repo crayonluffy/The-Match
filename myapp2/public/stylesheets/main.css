@@ -7,13 +7,13 @@ html, body {
 }
 
 #container {
-    background: #ffffff;
+    background: #000000;
     bottom: 0;
     height: 100%;
     left: 0;
     margin: auto;
-    max-height: 320px;
-    max-width: 480px;
+    max-height: 350px;
+    max-width: 500px;
     position: absolute;
     right: 0;
     top: 0;

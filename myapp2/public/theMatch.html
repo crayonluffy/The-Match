@@ -1,0 +1,53 @@
+<!Doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="stylesheets/reset.css" />
+    <link rel="stylesheet" href="stylesheets/main.css" />
+    <link rel="icon" type="image/png" href="images/favicon.png">
+	<link rel="stylesheet" href="stylesheets/style.css" type="text/css">
+	<title>The Match</title>
+    <script type="text/javascript" src="/bower_components/pathfinding/pathfinding-browser.min.js"></script>
+	<script type="text/javascript" src="/bower_components/SoundJS-0.6.2/lib/soundjs-0.6.2.min.js"></script>
+	<script type="text/javascript" src="/bower_components/EaselJS/lib/easeljs-0.8.2.min.js"></script>
+	<script type="text/javascript" src="/bower_components/underscore/underscore-min.js"></script>
+	<script type="text/javascript" src="/bower_components/backbone/backbone-min.js"> </script>
+	<script type="text/javascript" src="/bower_components/jquery/dist/jquery.min.js"> </script>
+	<script type="text/javascript" src="/bower_components/backbone.iobind/dist/backbone.iobind.min.js"> </script>
+	<script type="text/javascript" src="/bower_components/backbone.iobind/dist/backbone.iosync.min.js"> </script>
+<!--	<script type="text/javascript" src="/socket.io/socket.io.js"></script>-->
+	<script type="text/javascript" src="/javascripts/index.js"></script>
+	<script src="js/easeljs-0.8.2.combined.js"></script>
+	<script src="js/soundjs-0.6.2.combined.js"></script>
+	<script src="js/preloadjs-0.6.2.combined.js"></script>
+    <script src="js/tweenjs-0.6.2.combined.js"></script>
+	<script src="js/flashaudioplugin-0.6.2.combined.js"></script>
+    <script src="js/easystar-0.4.1.js"></script>
+    <script src="js/level1.js"></script>
+    <script src="js/level2.js"></script>
+    <script src="js/level3.js"></script>
+	<script src="js/menu.js"></script>
+    <script src="js/mouse.js"></script>
+    
+</head>
+<body>
+
+    <div id="container">
+        <canvas id="canvas" width="500px" height="350px" onmouseup="clear();" onmousedown="whichButton(event);" oncontextmenu="event.preventDefault();"></canvas>
+    </div>
+	
+	<div id="infoContainer">
+        <canvas id="info" width="640px" height="160px"></canvas>
+    </div>
+    
+    <div id="EnemyInfoContainer">
+        <canvas id="enemyInfo" width="640px" height="160px"></canvas>
+    </div>
+	<script>
+		Menu("opening");
+        //startGame3();
+	</script>
+
+
+</body>
+</html>
