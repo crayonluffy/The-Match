@@ -128,7 +128,10 @@ function addTitleView(menu, object){
 		// Button Listeners
 		object[0].addEventListener("click", story);
         object[1].addEventListener("click", resume);
-				object[2].addEventListener("click", startmultiGame)
+				object[2].addEventListener("click", function(){	
+				stage.removeAllChildren();
+				stage.removeAllEventListeners();
+				startmultiGame();})
 }
 
     function resume(){
