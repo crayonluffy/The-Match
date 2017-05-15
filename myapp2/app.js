@@ -67,7 +67,7 @@ while(map[y][x]==0){
   return [x,y];
 }
 var players = {};
-var io = require('socket.io').listen(8080);
+var io = require('socket.io').listen(15000);
 io.sockets.on('connection', function (socket) {
 //BUG: reconnect -> double init
   //adding new player

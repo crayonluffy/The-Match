@@ -20,7 +20,7 @@ function startmultiGame() {
             80: 0
         };
 
-        var socket = io.connect('http://158.132.53.104:8080');
+        var socket = io.connect('http://www.crayonluffy.com:15000');
         socket.on('init', function (data) {
           //data : {(socket id):[(x-coordinate),(y-coordiate)]}
           console.log(data);
@@ -64,8 +64,9 @@ function startmultiGame() {
         socket.on('oppo try attack',function (id) {
           for (var i = 0; i < remoteplayer.length; i++) {
             if(remoteplayer[i].id == id)
-{
-  enemyBrain(i);
+				{
+				enemyBrain(i);
+				checkEnemyWood(remoteplayer[i]);
               if (remoteplayer[i].currentAnimation !== "fire") {
                   remoteplayer[i].gotoAndPlay("fire");
               }
@@ -675,6 +676,23 @@ function startmultiGame() {
       }
     //}
   }
+  
+	function checkEnemyWood(character){
+		for (var w = 0; w < woods.length; w++) {
+        var woodPoint = {x: woods[w].x, y: woods[w].y};
+        var charPoint = {x: character.x, y: character.y};
+        var distToPlayer = pTheorem(woodPoint, charPoint);
+
+        if (distToPlayer < player.width )
+        {
+          if (!woods[w].isfire)
+          {
+            woods[w].fireNum = addFire(woods[w].x,woods[w].y);
+            woods[w].isfire = true;
+          }
+        }
+      }
+	}
 
 	//spread the fire from wood to character
 	function checkWoodFire(){
