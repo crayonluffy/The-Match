@@ -5,7 +5,7 @@ if (person != null) {
 }*/
 
 function Menu(count){
-	
+
 	var $container, canvas, stage,board, menu, startBtn, continueBtn, multiBtn, btmID;
 	$container = document.getElementById("container");
     canvasW = 480;
@@ -20,12 +20,12 @@ function Menu(count){
 		board.y = 0;
 		stage.addChild(board);
 	}
-	
+
 	manifest = [
             {src: "sounds/bgm.mp3", id: "bgm"},
             {src: "sounds/main.mp3", id: "main"},
 			{src: "sounds/fire.mp3", id: "fire_sound"},
-			{src: "sounds/match.mp3", id: "match_sound"},			
+			{src: "sounds/match.mp3", id: "match_sound"},
 			{src: "images/main2.png", id: "menu"},
 			{src: "images/new_game.png", id: "start"},
 			{src: "images/continue.png", id: "continue"},
@@ -45,14 +45,14 @@ function Menu(count){
             {src: "images/tut.png", id:"tut"}
         ];
         totalLoaded = 0;
-        
+
         function handleLoadComplete(event) {
             totalLoaded++;
            if (totalLoaded == manifest.length) {
               //addTitleView();
            }
         }
-        
+
         function handleFileLoad(event) {
             var img, audio;
             if (event.item.type === "image") {
@@ -65,7 +65,7 @@ function Menu(count){
                 audio.onload = handleLoadComplete;
             }
         }
-        
+
         function handleComplete(event) {
 			//Play the backgound music
 			bgmID = createjs.Sound.play("bgm");
@@ -101,7 +101,7 @@ function Menu(count){
             }
 			//console.log(menu);
         }
-        
+
         queue = new createjs.LoadQueue();
 		queue.installPlugin(createjs.Sound);
 		//queue = createjs.Sound.alternateExtensions = ["mp3"];
@@ -109,7 +109,7 @@ function Menu(count){
         queue.addEventListener("complete", handleComplete);
         queue.loadManifest(manifest);
         createjs.Ticker.addEventListener("tick", stage);
-        
+
 function addTitleView(menu, object){
 		// Add menu first so it will in the bottom
 		board.addChild(menu);
@@ -128,18 +128,20 @@ function addTitleView(menu, object){
 		// Button Listeners
 		object[0].addEventListener("click", story);
         object[1].addEventListener("click", resume);
+				object[2].addEventListener("click", startmultiGame)
 }
-    
+
     function resume(){
         if (level==1)
             startGame();
         else if (level==2)
             startGame2();
         else if (level ==3)
-            startGame3();       
+            startGame3();
+
     }
 
-    
+
 function Storyboard() {
 	this.story ={
 		"opening": [
@@ -187,7 +189,7 @@ function Storyboard() {
 		this.currentPlot = null;
 		this.moviePlayed = false;
 		this.playingPlot = false;
-		
+
 		this.video = document.createElement("video");
 		this.video.setAttribute("width",320);
 		this.video.setAttribute("height",240);
@@ -196,37 +198,37 @@ function Storyboard() {
 		this.src.setAttribute("src","images/anim_02.mp4");
 		this.src.setAttribute("type","video/mp4");
 		this.video.appendChild(this.src);
-		
+
 		this.img = document.createElement("img");
-		
+
 		this.stage = stage;
 		this.board = new createjs.Bitmap();
 		//this.board = new createjs.Bitmap(this.video)
 		//	.set({/*x:stage.canvas.width/2, y: stage.canvas.height/2, regX:320/2, regY:240/2,*/ scaleX:320/800, scaleY:240/600});
 		this.stage.addChild(this.board);
-		
+
 		this.text = new createjs.Text("", "16px Arial", "#ff7700")
 			.set({x:20, y:this.stage.canvas.height-50});
 		this.stage.addChild(this.text);
-		
+
 		this.video.addEventListener("ended", e => {
 			this.movEnd();
 		});
-		
+
 		this.setCurrPlot();
-		
+
 		this.stage.addEventListener("click", e => {
 			if (this.playingPlot){
 				if (!this.moviePlayed){
 					this.video.paused ? this.video.play() : this.video.pause();
 					this.movEnd();
 					return;
-				} 
+				}
 				this.nextDialog();
-				
+
 			}
 		})
-		
+
 	}
 	this.setCurrPlot = function (plot = "opening"){
 		this.currentPlot = this.story[plot];
@@ -234,7 +236,7 @@ function Storyboard() {
 	this.setCurrDial = function (num = 0){
 		this.currentDialog = num;
 	}
-	
+
 	this.nextDialog = function(){
 		if (this.currentDialog < this.currentPlot.length) {
 			this.text.text = this.currentPlot[this.currentDialog].text;
@@ -265,20 +267,20 @@ function Storyboard() {
 		this.playingPlot = true;
 		this.nextDialog();
 	}
-	
+
 	this.startOpMov = function () {
 		this.moviePlayed = false;
 		this.board.image = this.video;
-		this.board.set({x:0, y: 0, regX:0, regY:0, scaleX:320/800, scaleY:240/600});	
+		this.board.set({x:0, y: 0, regX:0, regY:0, scaleX:320/800, scaleY:240/600});
 		this.video.load();
 		this.playingPlot = true;
 	}
-	
+
 	this.movEnd = function() {
 		this.startDialog({plot: "opening", num: 0});
 		this.moviePlayed = true;
 	}
-}    
+}
 
 function story(){
     stage.removeAllChildren();
@@ -292,7 +294,7 @@ function newGame(){
 	startGame();
 	bgmID.stop();
 }
-    
+
 function newGame2(){
 	stage.removeAllChildren();
 	stage.removeAllEventListeners();

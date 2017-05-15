@@ -429,7 +429,7 @@ function startGame() {
                                 if (!enemies[e].isfire)
                                 {
                                     if (enemies[e].temperature < EnemyTemp)
-                                        enemies[e].temperature += 5;
+                                        enemies[e].temperature += 15;
                                     if (enemies[e].temperature >= EnemyTemp)
                                     {
                                         enemies[e].temperature = EnemyTemp;
@@ -452,7 +452,7 @@ function startGame() {
                                 if (!enemies[e].isfire)
                                 {
                                     if (enemies[e].temperature < EnemyTemp)
-                                        enemies[e].temperature += 5;
+                                        enemies[e].temperature += 15;
                                     if (enemies[e].temperature >= EnemyTemp)
                                     {
                                         enemies[e].temperature = EnemyTemp;
