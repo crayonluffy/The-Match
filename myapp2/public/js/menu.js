@@ -128,10 +128,12 @@ function addTitleView(menu, object){
 		// Button Listeners
 		object[0].addEventListener("click", story);
         object[1].addEventListener("click", resume);
-				object[2].addEventListener("click", function(){	
-				stage.removeAllChildren();
-				stage.removeAllEventListeners();
-				startmultiGame();})
+				// Multiplayer disabled - not available on serverless hosting
+		object[2].alpha = 0.3;
+		object[2].cursor = "not-allowed";
+		object[2].addEventListener("click", function(){
+			alert("Multiplayer is not available in this version.");
+		});
 }
 
     function resume(){

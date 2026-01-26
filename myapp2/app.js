@@ -11,7 +11,7 @@ var app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+app.set('view engine', 'pug');
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
@@ -69,16 +69,29 @@ while(map[y][x]==0){
 var players = {};
 var io = require('socket.io').listen(15000);
 io.sockets.on('connection', function (socket) {
-//BUG: reconnect -> double init
-  //adding new player
-    //init newPlayer
-  console.log(socket.id);
-  var newPlayer ={}
-  newPlayer[socket.id] = getStartPosition();//pick at starting position for the new player
+  // Check if this socket.id already exists (reconnect case)
+  if (players[socket.id]) {
+    // Player is reconnecting - don't re-initialize
+    console.log('Player reconnected:', socket.id);
+    socket.emit('init', players);
+    var existingPlayer = {};
+    existingPlayer[socket.id] = players[socket.id];
+    socket.emit('start', existingPlayer);
+    return;
+  }
 
-    //tell everyone
-  socket.broadcast.emit('oppo join',newPlayer);//tell other players that there is a newcomer
-  socket.emit('init', players);//give info to new player about player's starting position and position of others
+  // New player connection
+  console.log('New player:', socket.id);
+  var newPlayer = {};
+  var startPos = getStartPosition();
+  newPlayer[socket.id] = startPos;
+
+  // Add player to players object immediately to prevent double-init
+  players[socket.id] = startPos;
+
+  // Tell everyone about the new player
+  socket.broadcast.emit('oppo join', newPlayer);
+  socket.emit('init', players);
   socket.emit('start', newPlayer);
 
 

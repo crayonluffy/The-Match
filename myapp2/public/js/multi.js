@@ -20,7 +20,7 @@ function startmultiGame() {
             80: 0
         };
 
-        var socket = io.connect('http://www.crayonluffy.com:15000');
+        var socket = io.connect(window.location.protocol + '//' + window.location.hostname + ':15000');
         socket.on('init', function (data) {
           //data : {(socket id):[(x-coordinate),(y-coordiate)]}
           console.log(data);
