@@ -75,7 +75,7 @@
     "object-assign": "4.1.0",
     "socket.io-adapter": "0.5.0",
     "socket.io-client": "1.7.3",
-    "socket.io-parser": "2.3.1"
+    "socket.io-parser": "3.3.4"
   },
   "description": "node.js realtime framework server",
   "devDependencies": {
